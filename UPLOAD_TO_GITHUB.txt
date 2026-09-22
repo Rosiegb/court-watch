@@ -1,0 +1,19 @@
+COURT WATCH — GITHUB UPLOAD
+
+Upload all visible files/folders to your GitHub repository.
+
+IMPORTANT: the .github folder is hidden by macOS because its name starts with a dot.
+
+If Finder does not show .github:
+1. In Finder, open this folder.
+2. Press Command + Shift + . (period) to show hidden files.
+3. You will then see .github.
+4. Drag .github into the GitHub upload page along with app, checker.py, alerts.json and README.md.
+
+The final GitHub repository must contain:
+.github/workflows/check.yml
+app/index.html
+app/manifest.json
+checker.py
+alerts.json
+README.md
