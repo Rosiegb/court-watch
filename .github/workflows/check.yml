@@ -27,4 +27,6 @@ jobs:
           playwright install --with-deps chromium
 
       - name: Check courts
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python checker.py
