@@ -1,15 +1,113 @@
-<!doctype html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#111111"><link rel="manifest" href="manifest.json"><title>Court Watch</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:720px;margin:auto;padding:24px;background:#f7f7f5;color:#111}h1{margin-bottom:4px}.muted{color:#666}.card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:18px;margin:14px 0}label{display:block;font-size:13px;font-weight:600;margin:12px 0 6px}input,select,button{width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #ccc;font-size:16px}button{background:#111;color:#fff;border:0;margin-top:14px;font-weight:600}.status{margin-top:12px;font-size:13px}.ok{color:#167447}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}</style></head>
-<body><h1>🎾 Court Watch</h1><div class="muted">Free Better tennis-court alerts</div>
-<div class="card"><h2>New alert</h2>
-<label>Date</label><input id="date" type="date">
-<label>Venue</label><select id="venue"><option>Islington Tennis Centre</option></select>
-<label>Courts</label><select id="court"><option>Highbury Tennis</option><option>Any tennis court at Islington Tennis Centre</option></select>
-<div class="row"><div><label>From</label><input id="from" type="time" value="18:00"></div><div><label>Until</label><input id="to" type="time" value="21:00"></div></div>
-<button id="save">Start watching</button><div id="status" class="status"></div></div>
-<div class="card"><h2>How it works</h2><p class="muted">Your alert is saved in the free GitHub-backed checker. It checks Better every 5 minutes and can notify you when a new matching slot appears.</p><p class="muted">On iPhone: open this page in Safari → Share → Add to Home Screen.</p></div>
-<script>
-const d=document.getElementById('date'); d.value=new Date().toISOString().slice(0,10);
-document.getElementById('save').onclick=()=>{localStorage.setItem('courtWatchAlert',JSON.stringify({date:d.value,venue:venue.value,court:court.value,from:from.value,to:to.value}));status.textContent='Saved on this device. Connect the GitHub workflow to run the live checker.';status.className='status ok'};
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🎾 Court Watch</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      background: #f5f4f0;
+      color: #171717;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      padding: 48px 22px 32px;
+    }
+
+    .ball {
+      font-size: 42px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: 34px;
+      margin: 0 0 6px;
+      letter-spacing: -1.5px;
+    }
+
+    .subtitle {
+      color: #777;
+      font-size: 16px;
+      margin-bottom: 34px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.06);
+      margin-bottom: 18px;
+    }
+
+    .venue {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .location {
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      padding: 17px;
+      border-radius: 15px;
+      background: #111;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      font-size: 17px;
+      font-weight: 600;
+      margin-top: 20px;
+    }
+
+    .note {
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 22px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+
+    <div class="ball">🎾</div>
+
+    <h1>Court Watch</h1>
+    <div class="subtitle">Never miss a Highbury court.</div>
+
+    <div class="card">
+      <div class="venue">Highbury Tennis</div>
+      <div class="location">Islington Tennis Centre</div>
+
+      <a
+        class="button"
+        href="https://github.com/Rosiegb/court-watch/actions/workflows/check.yml"
+      >
+        Set up a court watch
+      </a>
+    </div>
+
+    <div class="note">
+      Choose your date, time and duration on the next screen.<br>
+      Your iPhone will alert you when a court opens.
+    </div>
+
+  </main>
+</body>
+</html>
