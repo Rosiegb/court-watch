@@ -3,7 +3,32 @@ name: Court Watch
 on:
   schedule:
     - cron: "*/5 * * * *"
+
   workflow_dispatch:
+    inputs:
+      date:
+        description: "Date to watch (YYYY-MM-DD)"
+        required: true
+        default: "2026-09-25"
+
+      from:
+        description: "Earliest time (HH:MM)"
+        required: true
+        default: "08:00"
+
+      until:
+        description: "Latest time (HH:MM)"
+        required: true
+        default: "22:00"
+
+      duration:
+        description: "Duration in minutes"
+        required: true
+        type: choice
+        options:
+          - "40"
+          - "60"
+        default: "60"
 
 permissions:
   contents: write
@@ -28,17 +53,32 @@ jobs:
           pip install playwright requests
           playwright install --with-deps chromium
 
+      - name: Update watch settings
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cat > alerts.json <<'EOF'
+          [
+            {
+              "date": "${{ inputs.date }}",
+              "from": "${{ inputs.from }}",
+              "until": "${{ inputs.until }}",
+              "duration_minutes": ${{ inputs.duration }},
+              "court": "any"
+            }
+          ]
+          EOF
+
       - name: Check courts
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python checker.py
 
-      - name: Save notification history
+      - name: Save changes
         run: |
-          if [ -f seen_slots.json ]; then
+          if [ -f alerts.json ] || [ -f seen_slots.json ]; then
             git config user.name "Court Watch"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add seen_slots.json
-            git diff --cached --quiet || git commit -m "Update court alert history"
+            git add alerts.json seen_slots.json
+            git diff --cached --quiet || git commit -m "Update Court Watch settings"
             git push
           fi
