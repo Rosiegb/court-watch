@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import datetime
+import requests
 from playwright.sync_api import sync_playwright
 
 BETTER_URL = (
@@ -18,7 +18,6 @@ def time_to_minutes(value):
 def extract_slots(page):
     slots = []
 
-    # Better exposes bookable sessions as links containing /slot/
     links = page.locator('a[href*="/slot/"]')
 
     for i in range(links.count()):
@@ -44,7 +43,6 @@ def extract_slots(page):
 
             start_minutes = time_to_minutes(start)
             end_minutes = time_to_minutes(end)
-
             duration = end_minutes - start_minutes
 
             if duration <= 0:
@@ -129,10 +127,34 @@ def check(alert):
         return matching
 
 
+def send_test_notification():
+    topic = os.environ.get("NTFY_TOPIC")
+
+    if not topic:
+        print("NTFY_TOPIC secret not found.")
+        return
+
+    response = requests.post(
+        "https://ntfy.sh/" + topic,
+        data=(
+            "🎾 Court Watch is connected! "
+            "Your iPhone alerts are working."
+        ).encode("utf-8"),
+        headers={
+            "Title": "Court Watch Test",
+            "Priority": "high",
+            "Tags": "white_check_mark,tennis",
+        },
+        timeout=30,
+    )
+
+    print("ntfy response:", response.status_code, response.text)
+
+
 if __name__ == "__main__":
 
     if not os.path.exists("alerts.json"):
-        print("No alerts.json found.")
+        print("No alerts configured.")
         raise SystemExit
 
     with open("alerts.json") as f:
@@ -144,3 +166,5 @@ if __name__ == "__main__":
 
     for alert in alerts:
         check(alert)
+
+    send_test_notification()
