@@ -2,12 +2,15 @@ import json
 import os
 import re
 import requests
+from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 BETTER_URL = (
     "https://bookings.better.org.uk/"
     "location/islington-tennis-centre/highbury-tennis/{date}/by-time"
 )
+
+SEEN_FILE = Path("seen_slots.json")
 
 
 def time_to_minutes(value):
@@ -125,6 +128,22 @@ def check(alert):
         return matching
 
 
+def load_seen():
+    if not SEEN_FILE.exists():
+        return set()
+
+    try:
+        with open(SEEN_FILE) as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+
+def save_seen(seen):
+    with open(SEEN_FILE, "w") as f:
+        json.dump(sorted(seen), f, indent=2)
+
+
 def send_notification(slot, alert):
     topic = os.environ.get("NTFY_TOPIC")
 
@@ -170,12 +189,33 @@ def main():
         print("No alerts configured.")
         return
 
+    seen = load_seen()
+    changed = False
+
     for alert in alerts:
 
         matching_slots = check(alert)
 
         for slot in matching_slots:
+
+            slot_id = (
+                f"{alert['date']}-"
+                f"{slot['start']}-"
+                f"{slot['end']}-"
+                f"{slot['url']}"
+            )
+
+            if slot_id in seen:
+                print(f"Already notified: {slot['start']}-{slot['end']}")
+                continue
+
             send_notification(slot, alert)
+
+            seen.add(slot_id)
+            changed = True
+
+    if changed:
+        save_seen(seen)
 
 
 if __name__ == "__main__":
