@@ -1,14 +1,79 @@
 import json
 import os
+import re
+from datetime import datetime
 from playwright.sync_api import sync_playwright
 
-BETTER_URL = "https://bookings.better.org.uk/location/islington-tennis-centre/highbury-tennis/{date}/by-time"
+BETTER_URL = (
+    "https://bookings.better.org.uk/"
+    "location/islington-tennis-centre/highbury-tennis/{date}/by-time"
+)
 
 
-def inspect_page(alert):
+def time_to_minutes(value):
+    hour, minute = map(int, value.split(":"))
+    return hour * 60 + minute
+
+
+def extract_slots(page):
+    slots = []
+
+    # Better exposes bookable sessions as links containing /slot/
+    links = page.locator('a[href*="/slot/"]')
+
+    for i in range(links.count()):
+        link = links.nth(i)
+
+        try:
+            href = link.get_attribute("href")
+            text = link.inner_text().strip()
+
+            if not href:
+                continue
+
+            match = re.search(
+                r"/slot/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/",
+                href
+            )
+
+            if not match:
+                continue
+
+            start = match.group(1)
+            end = match.group(2)
+
+            start_minutes = time_to_minutes(start)
+            end_minutes = time_to_minutes(end)
+
+            duration = end_minutes - start_minutes
+
+            if duration <= 0:
+                continue
+
+            if href.startswith("/"):
+                full_url = "https://bookings.better.org.uk" + href
+            else:
+                full_url = href
+
+            slots.append({
+                "start": start,
+                "end": end,
+                "duration_minutes": duration,
+                "text": text,
+                "url": full_url,
+            })
+
+        except Exception as e:
+            print(f"Could not read link: {e}")
+
+    return slots
+
+
+def check(alert):
     url = BETTER_URL.format(date=alert["date"])
 
-    print(f"\nOpening: {url}\n")
+    print(f"\nChecking Better:")
+    print(url)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -22,40 +87,50 @@ def inspect_page(alert):
             ),
         )
 
-        page.goto(url, wait_until="networkidle", timeout=60000)
+        page.goto(
+            url,
+            wait_until="networkidle",
+            timeout=60000
+        )
 
-        # Give the booking application a little extra time to render.
         page.wait_for_timeout(5000)
 
-        print("PAGE TITLE:")
-        print(page.title())
+        slots = extract_slots(page)
 
-        print("\nVISIBLE PAGE TEXT:")
-        print(page.locator("body").inner_text())
+        requested_from = time_to_minutes(alert["from"])
+        requested_until = time_to_minutes(alert["until"])
+        requested_duration = alert["duration_minutes"]
 
-        print("\nBUTTONS:")
-        for button in page.locator("button").all():
-            try:
-                text = button.inner_text().strip()
-                if text:
-                    print(repr(text))
-            except Exception:
-                pass
+        matching = []
 
-        print("\nLINKS:")
-        for link in page.locator("a").all():
-            try:
-                text = link.inner_text().strip()
-                href = link.get_attribute("href")
-                if text or href:
-                    print(f"TEXT={text!r}  HREF={href!r}")
-            except Exception:
-                pass
+        for slot in slots:
+            slot_start = time_to_minutes(slot["start"])
+            slot_end = time_to_minutes(slot["end"])
+
+            if slot_start < requested_from:
+                continue
+
+            if slot_end > requested_until:
+                continue
+
+            if slot["duration_minutes"] != requested_duration:
+                continue
+
+            matching.append(slot)
+
+        print("\nBOOKABLE SLOTS FOUND:")
+        print(json.dumps(slots, indent=2))
+
+        print("\nMATCHING SLOTS:")
+        print(json.dumps(matching, indent=2))
 
         browser.close()
 
+        return matching
+
 
 if __name__ == "__main__":
+
     if not os.path.exists("alerts.json"):
         print("No alerts.json found.")
         raise SystemExit
@@ -68,4 +143,4 @@ if __name__ == "__main__":
         raise SystemExit
 
     for alert in alerts:
-        inspect_page(alert)
+        check(alert)
