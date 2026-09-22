@@ -161,7 +161,7 @@ def send_notification(slot, alert):
         "https://ntfy.sh/" + topic,
         data=message.encode("utf-8"),
         headers={
-            "Title": "🎾 Highbury Tennis available",
+            "Title": "Highbury Tennis available",
             "Priority": "high",
             "Tags": "tennis",
             "Click": slot["url"],
