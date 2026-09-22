@@ -41,9 +41,10 @@ def extract_slots(page):
             start = match.group(1)
             end = match.group(2)
 
-            start_minutes = time_to_minutes(start)
-            end_minutes = time_to_minutes(end)
-            duration = end_minutes - start_minutes
+            duration = (
+                time_to_minutes(end)
+                - time_to_minutes(start)
+            )
 
             if duration <= 0:
                 continue
@@ -116,9 +117,6 @@ def check(alert):
 
             matching.append(slot)
 
-        print("\nBOOKABLE SLOTS FOUND:")
-        print(json.dumps(slots, indent=2))
-
         print("\nMATCHING SLOTS:")
         print(json.dumps(matching, indent=2))
 
@@ -127,44 +125,58 @@ def check(alert):
         return matching
 
 
-def send_test_notification():
+def send_notification(slot, alert):
     topic = os.environ.get("NTFY_TOPIC")
 
     if not topic:
         print("NTFY_TOPIC secret not found.")
         return
 
+    message = (
+        f"🎾 Highbury Tennis available\n"
+        f"{alert['date']} · {slot['start']}–{slot['end']}\n\n"
+        f"Tap to book:\n{slot['url']}"
+    )
+
     response = requests.post(
         "https://ntfy.sh/" + topic,
-        data=(
-            "🎾 Court Watch is connected! "
-            "Your iPhone alerts are working."
-        ).encode("utf-8"),
+        data=message.encode("utf-8"),
         headers={
-            "Title": "Court Watch Test",
+            "Title": "🎾 Highbury Tennis available",
             "Priority": "high",
-            "Tags": "white_check_mark,tennis",
+            "Tags": "tennis",
+            "Click": slot["url"],
         },
         timeout=30,
     )
 
-    print("ntfy response:", response.status_code, response.text)
+    print(
+        "Notification response:",
+        response.status_code,
+        response.text
+    )
 
 
-if __name__ == "__main__":
+def main():
 
     if not os.path.exists("alerts.json"):
         print("No alerts configured.")
-        raise SystemExit
+        return
 
     with open("alerts.json") as f:
         alerts = json.load(f)
 
     if not alerts:
         print("No alerts configured.")
-        raise SystemExit
+        return
 
     for alert in alerts:
-        check(alert)
 
-    send_test_notification()
+        matching_slots = check(alert)
+
+        for slot in matching_slots:
+            send_notification(slot, alert)
+
+
+if __name__ == "__main__":
+    main()
