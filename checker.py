@@ -19,8 +19,6 @@ def time_to_minutes(value):
 
 
 def close_cookie_banner(page):
-    """Dismiss OneTrust cookie banner if it is present."""
-
     try:
         page.evaluate("""
             () => {
@@ -33,22 +31,6 @@ def close_cookie_banner(page):
     except Exception:
         pass
 
-    try:
-        page.locator(
-            "#onetrust-banner-sdk button"
-        ).filter(
-            has_text=re.compile(
-                "accept|allow|close",
-                re.IGNORECASE
-            )
-        ).first.click(
-            timeout=3000
-        )
-    except Exception:
-        pass
-
-    page.wait_for_timeout(500)
-
 
 def extract_slots(page):
     slots = []
@@ -56,7 +38,6 @@ def extract_slots(page):
     links = page.locator('a[href*="/slot/"]')
 
     for i in range(links.count()):
-
         link = links.nth(i)
 
         try:
@@ -103,44 +84,72 @@ def extract_slots(page):
     return slots
 
 
-def extract_available_courts(page):
+def extract_courts_from_popup(page):
 
     courts = []
 
-    selects = page.locator("select")
+    # Look for the court-selection control.
+    candidates = page.locator(
+        "text=Select location:"
+    )
 
-    for i in range(selects.count()):
+    if candidates.count() == 0:
+        return courts
 
-        select = selects.nth(i)
+    try:
+        # Find the clickable control near "Select location".
+        control = page.locator(
+            '[role="combobox"]'
+        ).first
+
+        if control.count() > 0:
+            control.click()
+        else:
+            # Fallback: click the visible selection text.
+            page.locator(
+                "text=FULL - Highbury Fields Court 1"
+            ).first.click()
+
+        page.wait_for_timeout(300)
+
+    except Exception as e:
+        print(f"Could not open court selector: {e}")
+        return courts
+
+    # Read all visible text containing "Highbury Fields Court".
+    elements = page.locator(
+        "text=/Highbury Fields Court/"
+    )
+
+    for i in range(elements.count()):
 
         try:
-            options = select.locator("option")
+            text = elements.nth(i).inner_text().strip()
 
-            for j in range(options.count()):
-
-                text = options.nth(j).inner_text().strip()
-
-                if "Highbury Fields Court" not in text:
-                    continue
-
-                if text.upper().startswith("FULL -"):
-                    continue
-
-                match = re.search(
-                    r"Highbury Fields Court\s+(\d+)",
-                    text,
-                    re.IGNORECASE
-                )
-
-                if match:
-                    courts.append(
-                        f"Highbury Fields Court {match.group(1)}"
-                    )
-
-        except Exception as e:
-            print(
-                f"Could not inspect court selector: {e}"
+            match = re.search(
+                r"Highbury Fields Court\s+(\d+)",
+                text,
+                re.IGNORECASE
             )
+
+            if not match:
+                continue
+
+            # Ignore courts explicitly marked FULL.
+            if text.upper().startswith("FULL -"):
+                continue
+
+            court = (
+                f"Highbury Fields Court "
+                f"{match.group(1)}"
+            )
+
+            courts.append(court)
+
+        except Exception:
+            pass
+
+    page.keyboard.press("Escape")
 
     return sorted(set(courts))
 
@@ -148,11 +157,15 @@ def extract_available_courts(page):
 def inspect_slot(page, slot):
 
     try:
-
         close_cookie_banner(page)
 
+        href = slot["url"].replace(
+            "https://bookings.better.org.uk",
+            ""
+        )
+
         link = page.locator(
-            f'a[href="{slot["url"].replace("https://bookings.better.org.uk", "")}"]'
+            f'a[href="{href}"]'
         ).first
 
         link.scroll_into_view_if_needed()
@@ -162,9 +175,9 @@ def inspect_slot(page, slot):
             force=True
         )
 
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
-        courts = extract_available_courts(page)
+        courts = extract_courts_from_popup(page)
 
         print(
             f"{slot['start']}-{slot['end']}: "
@@ -172,7 +185,6 @@ def inspect_slot(page, slot):
         )
 
         page.keyboard.press("Escape")
-        page.wait_for_timeout(300)
 
         return courts
 
@@ -235,13 +247,10 @@ def check(alert):
 
         for slot in slots:
 
-            slot_start = time_to_minutes(slot["start"])
-            slot_end = time_to_minutes(slot["end"])
-
-            if slot_start < requested_from:
+            if time_to_minutes(slot["start"]) < requested_from:
                 continue
 
-            if slot_end > requested_until:
+            if time_to_minutes(slot["end"]) > requested_until:
                 continue
 
             if slot["duration_minutes"] != requested_duration:
@@ -276,12 +285,7 @@ def check(alert):
                 })
 
         print("\nAVAILABLE COURTS:")
-        print(
-            json.dumps(
-                results,
-                indent=2
-            )
-        )
+        print(json.dumps(results, indent=2))
 
         browser.close()
 
@@ -294,10 +298,8 @@ def load_state():
         return {}
 
     try:
-
         with open(STATE_FILE) as f:
             return json.load(f)
-
     except Exception:
         return {}
 
@@ -305,11 +307,7 @@ def load_state():
 def save_state(state):
 
     with open(STATE_FILE, "w") as f:
-        json.dump(
-            state,
-            f,
-            indent=2
-        )
+        json.dump(state, f, indent=2)
 
 
 def send_notification(slot, alert):
@@ -329,7 +327,7 @@ def send_notification(slot, alert):
         f"{slot['url']}"
     )
 
-    response = requests.post(
+    requests.post(
         "https://ntfy.sh/" + topic,
         data=message.encode("utf-8"),
         headers={
@@ -341,24 +339,16 @@ def send_notification(slot, alert):
         timeout=30,
     )
 
-    print(
-        "Notification response:",
-        response.status_code,
-        response.text
-    )
-
 
 def main():
 
     if not os.path.exists("alerts.json"):
-        print("No alerts configured.")
         return
 
     with open("alerts.json") as f:
         alerts = json.load(f)
 
     if not alerts:
-        print("No alerts configured.")
         return
 
     state = load_state()
@@ -388,17 +378,13 @@ def main():
         for slot_id, slot in current.items():
 
             if slot_id not in previous:
-
                 print(
                     f"NEW AVAILABILITY: "
                     f"{slot['court']} "
                     f"{slot['start']}-{slot['end']}"
                 )
 
-                send_notification(
-                    slot,
-                    alert
-                )
+                send_notification(slot, alert)
 
         state[alert["date"]] = {
             slot_id: True
