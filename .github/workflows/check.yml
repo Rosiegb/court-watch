@@ -1,34 +1,25 @@
 name: Court Watch
 
 on:
+
   schedule:
     - cron: "*/5 * * * *"
 
   workflow_dispatch:
     inputs:
-      date:
-        description: "Date to watch (YYYY-MM-DD)"
-        required: true
-        default: "2026-09-25"
 
-      from:
-        description: "Earliest time (HH:MM)"
-        required: true
-        default: "08:00"
-
-      until:
-        description: "Latest time (HH:MM)"
-        required: true
-        default: "22:00"
-
-      duration:
-        description: "Duration in minutes"
+      action:
+        description: "Manage Court Watch"
         required: true
         type: choice
         options:
-          - "40"
-          - "60"
-        default: "60"
+          - update
+        default: update
+
+      watches:
+        description: "JSON watch configuration"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -37,9 +28,68 @@ concurrency:
   group: court-watch
   cancel-in-progress: false
 
+
 jobs:
 
+  manage:
+    if: github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update watches
+        env:
+          WATCHES: ${{ inputs.watches }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          watches = json.loads(
+              os.environ["WATCHES"]
+          )
+
+          if not isinstance(watches, list):
+              raise ValueError(
+                  "Watches must be a JSON list."
+              )
+
+          with open("alerts.json", "w") as f:
+              json.dump(
+                  watches,
+                  f,
+                  indent=2
+              )
+
+          print(
+              f"Saved {len(watches)} watches."
+          )
+          PY
+
+      - name: Save watches
+        run: |
+          git config user.name "Court Watch"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add alerts.json
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Update Court Watch alerts"
+            git push
+          fi
+
+
   check:
+
+    if: github.event_name == 'schedule'
 
     runs-on: ubuntu-latest
 
@@ -61,21 +111,6 @@ jobs:
           pip install playwright requests
           playwright install --with-deps chromium
 
-      - name: Update watch settings
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          cat > alerts.json <<EOF
-          [
-            {
-              "date": "${{ inputs.date }}",
-              "from": "${{ inputs.from }}",
-              "until": "${{ inputs.until }}",
-              "duration_minutes": ${{ inputs.duration }},
-              "court": "any"
-            }
-          ]
-          EOF
-
       - name: Check courts
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
@@ -87,10 +122,10 @@ jobs:
           git config user.name "Court Watch"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add alerts.json slot_state.json
+          git add slot_state.json
 
           if git diff --cached --quiet; then
-            echo "No changes to save."
+            echo "No state changes."
           else
             git commit -m "Update Court Watch state"
             git push
