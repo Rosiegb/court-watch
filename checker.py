@@ -5,9 +5,11 @@ import requests
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+
 BETTER_URL = (
     "https://bookings.better.org.uk/"
-    "location/islington-tennis-centre/highbury-tennis/{date}/by-time"
+    "location/islington-tennis-centre/"
+    "highbury-tennis/{date}/by-time"
 )
 
 STATE_FILE = Path("slot_state.json")
@@ -52,16 +54,23 @@ def close_cookie_banner(page):
 
 
 def extract_slots(page):
-    """Find Better time slots that have a bookable link."""
+    """
+    Find Better time slots that have a bookable link.
+    """
 
     slots = []
 
-    links = page.locator('a[href*="/slot/"]')
+    links = page.locator(
+        'a[href*="/slot/"]'
+    )
 
     for i in range(links.count()):
 
         try:
-            href = links.nth(i).get_attribute("href")
+
+            href = links.nth(i).get_attribute(
+                "href"
+            )
 
             if not href:
                 continue
@@ -99,17 +108,21 @@ def extract_slots(page):
             })
 
         except Exception as e:
-            print(f"Could not read slot: {e}")
 
-    # Deduplicate
+            print(
+                f"Could not read slot: {e}"
+            )
+
     unique = {}
 
     for slot in slots:
+
         key = (
             slot["start"],
             slot["end"],
             slot["url"]
         )
+
         unique[key] = slot
 
     return list(unique.values())
@@ -129,7 +142,10 @@ def get_court_selector(page):
     for selector in selectors:
 
         try:
-            locator = page.locator(selector).first
+
+            locator = page.locator(
+                selector
+            ).first
 
             if locator.count() > 0:
                 return locator
@@ -143,18 +159,21 @@ def get_court_selector(page):
 def open_court_selector(page):
     """
     Open Better's custom court dropdown.
-
-    Uses several methods because the input can be positioned
-    outside Playwright's normal viewport in headless Chromium.
     """
 
     selector = get_court_selector(page)
 
     if selector is None:
-        print("Court selector not found.")
+
+        print(
+            "Court selector not found."
+        )
+
         return False
 
-    # Method 1: focus the React Select input and use keyboard.
+
+    # Method 1: keyboard
+
     try:
 
         selector.evaluate(
@@ -163,7 +182,9 @@ def open_court_selector(page):
 
         page.wait_for_timeout(150)
 
-        page.keyboard.press("ArrowDown")
+        page.keyboard.press(
+            "ArrowDown"
+        )
 
         page.wait_for_timeout(500)
 
@@ -177,7 +198,9 @@ def open_court_selector(page):
     except Exception:
         pass
 
-    # Method 2: dispatch mouse events directly.
+
+    # Method 2: mouse events
+
     try:
 
         selector.evaluate("""
@@ -223,14 +246,20 @@ def open_court_selector(page):
     except Exception:
         pass
 
-    # Method 3: click the React Select control with JS.
+
+    # Method 3: click React Select control
+
     try:
 
         selector.evaluate("""
             el => {
                 let node = el;
 
-                for (let i = 0; i < 8 && node; i++) {
+                for (
+                    let i = 0;
+                    i < 8 && node;
+                    i++
+                ) {
 
                     if (
                         node.getAttribute &&
@@ -257,23 +286,35 @@ def open_court_selector(page):
     except Exception:
         pass
 
+
     return False
 
 
 def extract_available_courts(page):
     """
-    Read individual Highbury court availability.
+    Return individual available Highbury courts.
 
-    Available:
+    Courts 1-11 are recognised.
+
+    A court shown as:
+
         Highbury Fields Court 3
 
-    Unavailable:
-        FULL - Highbury Fields Court 1
+    is available.
+
+    A court shown as:
+
+        FULL - Highbury Fields Court 3
+
+    is unavailable.
     """
 
     courts = []
 
-    # Preferred method: React Select menu options.
+
+    # Preferred method:
+    # React Select menu options.
+
     options = page.locator(
         '[role="option"]'
     )
@@ -305,9 +346,12 @@ def extract_available_courts(page):
             ):
                 continue
 
-            number = int(match.group(1))
+            number = int(
+                match.group(1)
+            )
 
             if 1 <= number <= 11:
+
                 courts.append(
                     f"Highbury Fields Court {number}"
                 )
@@ -315,7 +359,10 @@ def extract_available_courts(page):
         except Exception:
             pass
 
-    # Fallback: inspect visible text.
+
+    # Fallback:
+    # inspect visible page text.
+
     if not courts:
 
         try:
@@ -330,7 +377,7 @@ def extract_available_courts(page):
                 if line.strip()
             ]
 
-            for index, line in enumerate(lines):
+            for line in lines:
 
                 match = re.fullmatch(
                     r"Highbury Fields Court\s+(\d+)",
@@ -341,7 +388,9 @@ def extract_available_courts(page):
                 if not match:
                     continue
 
-                number = int(match.group(1))
+                number = int(
+                    match.group(1)
+                )
 
                 if 1 <= number <= 11:
 
@@ -352,10 +401,14 @@ def extract_available_courts(page):
         except Exception:
             pass
 
+
     return sorted(
         set(courts),
         key=lambda value: int(
-            re.search(r"\d+", value).group()
+            re.search(
+                r"\d+",
+                value
+            ).group()
         )
     )
 
@@ -376,13 +429,15 @@ def inspect_slot(page, slot):
         ).first
 
         if link.count() == 0:
+
             print(
-                f"Book link not found: "
+                "Book link not found: "
                 f"{slot['start']}-{slot['end']}"
             )
+
             return []
 
-        # Force avoids cookie/overlay interception.
+
         link.click(
             force=True,
             timeout=10000
@@ -392,49 +447,66 @@ def inspect_slot(page, slot):
 
         close_cookie_banner(page)
 
-        selector = get_court_selector(page)
+
+        selector = get_court_selector(
+            page
+        )
 
         if selector is None:
 
             print(
-                f"Court selector missing: "
+                "Court selector missing: "
                 f"{slot['start']}-{slot['end']}"
             )
 
             return []
 
-        opened = open_court_selector(page)
+
+        opened = open_court_selector(
+            page
+        )
 
         if not opened:
 
             print(
-                f"Could not open court selector: "
+                "Could not open court selector: "
                 f"{slot['start']}-{slot['end']}"
             )
 
             return []
 
-        courts = extract_available_courts(page)
+
+        courts = extract_available_courts(
+            page
+        )
+
 
         print(
             f"{slot['start']}-{slot['end']}: "
             f"{courts}"
         )
 
-        page.keyboard.press("Escape")
+
+        page.keyboard.press(
+            "Escape"
+        )
+
         page.wait_for_timeout(200)
 
         return courts
 
+
     except Exception as e:
 
         print(
-            f"Could not inspect "
+            "Could not inspect "
             f"{slot['start']}-{slot['end']}: {e}"
         )
 
         try:
-            page.keyboard.press("Escape")
+            page.keyboard.press(
+                "Escape"
+            )
         except Exception:
             pass
 
@@ -447,8 +519,12 @@ def check(alert):
         date=alert["date"]
     )
 
-    print("\nChecking Better:")
+    print(
+        "\nChecking Better:"
+    )
+
     print(url)
+
 
     with sync_playwright() as p:
 
@@ -461,6 +537,7 @@ def check(alert):
                 "width": 1440,
                 "height": 1600
             },
+
             user_agent=(
                 "Mozilla/5.0 "
                 "(Macintosh; Intel Mac OS X 10_15_7) "
@@ -470,6 +547,7 @@ def check(alert):
             ),
         )
 
+
         try:
 
             page.goto(
@@ -478,11 +556,19 @@ def check(alert):
                 timeout=60000
             )
 
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(
+                5000
+            )
 
-            close_cookie_banner(page)
+            close_cookie_banner(
+                page
+            )
 
-            slots = extract_slots(page)
+
+            slots = extract_slots(
+                page
+            )
+
 
             requested_from = time_to_minutes(
                 alert["from"]
@@ -496,7 +582,9 @@ def check(alert):
                 alert["duration_minutes"]
             )
 
+
             matching = []
+
 
             for slot in slots:
 
@@ -507,6 +595,7 @@ def check(alert):
                 end = time_to_minutes(
                     slot["end"]
                 )
+
 
                 if start < requested_from:
                     continue
@@ -520,14 +609,21 @@ def check(alert):
                 ):
                     continue
 
-                matching.append(slot)
+
+                matching.append(
+                    slot
+                )
+
 
             print(
-                f"\nFound {len(matching)} "
-                f"matching bookable time slots."
+                "\nFound "
+                f"{len(matching)} "
+                "matching bookable time slots."
             )
 
+
             results = []
+
 
             for slot in matching:
 
@@ -536,18 +632,33 @@ def check(alert):
                     slot
                 )
 
+
                 for court in courts:
 
                     results.append({
-                        "start": slot["start"],
-                        "end": slot["end"],
+
+                        "start":
+                            slot["start"],
+
+                        "end":
+                            slot["end"],
+
                         "duration_minutes":
                             slot["duration_minutes"],
-                        "court": court,
-                        "url": slot["url"],
+
+                        "court":
+                            court,
+
+                        "url":
+                            slot["url"],
+
                     })
 
-            print("\nAVAILABLE COURTS:")
+
+            print(
+                "\nAVAILABLE COURTS:"
+            )
+
             print(
                 json.dumps(
                     results,
@@ -555,7 +666,9 @@ def check(alert):
                 )
             )
 
+
             return results
+
 
         finally:
 
@@ -567,10 +680,15 @@ def load_state():
     if not STATE_FILE.exists():
         return {}
 
+
     try:
 
-        with open(STATE_FILE) as f:
+        with open(
+            STATE_FILE
+        ) as f:
+
             return json.load(f)
+
 
     except Exception:
 
@@ -579,7 +697,11 @@ def load_state():
 
 def save_state(state):
 
-    with open(STATE_FILE, "w") as f:
+    with open(
+        STATE_FILE,
+        "w"
+    ) as f:
+
         json.dump(
             state,
             f,
@@ -587,49 +709,106 @@ def save_state(state):
         )
 
 
-def send_notification(slot, alert):
+def send_notification(
+    slot,
+    alert
+):
+    """
+    Send the iPhone notification.
+
+    Returns True only when ntfy accepts
+    the notification successfully.
+    """
 
     topic = os.environ.get(
         "NTFY_TOPIC"
     )
 
+
     if not topic:
 
         print(
-            "NTFY_TOPIC secret not found."
+            "ERROR: NTFY_TOPIC secret not found."
         )
 
-        return
+        return False
+
 
     message = (
-        f"🎾 Highbury Tennis available\n"
+        "🎾 Highbury Tennis available\n"
         f"{slot['court']}\n"
         f"{alert['date']} · "
         f"{slot['start']}–{slot['end']}\n\n"
-        f"Tap to book:\n"
+        "Tap to book:\n"
         f"{slot['url']}"
     )
 
-    response = requests.post(
-        "https://ntfy.sh/" + topic,
-        data=message.encode("utf-8"),
-        headers={
-            "Title":
-                "Highbury Tennis available",
-            "Priority":
-                "high",
-            "Tags":
-                "tennis",
-            "Click":
-                slot["url"],
-        },
-        timeout=30,
-    )
 
-    print(
-        "Notification:",
-        response.status_code
-    )
+    try:
+
+        response = requests.post(
+
+            "https://ntfy.sh/" + topic,
+
+            data=message.encode(
+                "utf-8"
+            ),
+
+            headers={
+
+                "Title":
+                    "Highbury Tennis available",
+
+                "Priority":
+                    "high",
+
+                "Tags":
+                    "tennis",
+
+                "Click":
+                    slot["url"],
+
+            },
+
+            timeout=30,
+
+        )
+
+
+        print(
+            "ntfy response:",
+            response.status_code
+        )
+
+
+        if response.ok:
+
+            print(
+                "🎾 Notification accepted by ntfy."
+            )
+
+            return True
+
+
+        print(
+            "ERROR: ntfy rejected notification:"
+        )
+
+        print(
+            response.text
+        )
+
+        return False
+
+
+    except Exception as e:
+
+        print(
+            "ERROR sending ntfy notification:",
+            e
+        )
+
+        return False
 
 
 def main():
@@ -638,29 +817,72 @@ def main():
         "alerts.json"
     ):
 
-        print("No alerts configured.")
+        print(
+            "No alerts configured."
+        )
+
         return
 
-    with open("alerts.json") as f:
+
+    with open(
+        "alerts.json"
+    ) as f:
+
         alerts = json.load(f)
+
 
     if not alerts:
 
-        print("No alerts configured.")
+        print(
+            "No alerts configured."
+        )
+
         return
+
 
     state = load_state()
 
+
     for alert in alerts:
 
-        available = check(alert)
+        # Paused watches are ignored.
+        if alert.get(
+            "enabled",
+            True
+        ) is False:
+
+            print(
+                "Skipping paused watch:",
+                alert
+            )
+
+            continue
+
+
+        print(
+            "\n================================"
+        )
+
+        print(
+            "WATCH:",
+            alert
+        )
+
+        print(
+            "================================"
+        )
+
+
+        available = check(
+            alert
+        )
+
 
         current = {}
 
+
         for slot in available:
 
-            # Individual court + time is the unique
-            # availability being watched.
             slot_id = (
                 f"{alert['date']}-"
                 f"{slot['court']}-"
@@ -670,62 +892,111 @@ def main():
 
             current[slot_id] = slot
 
-        # Include the actual watch settings in the state key.
-        # This means changing date/time/duration starts a
-        # genuinely fresh watch.
-        watch_key = (
-            f"{alert['date']}|"
-            f"{alert['from']}|"
-            f"{alert['until']}|"
-            f"{alert['duration_minutes']}"
+
+        # Use the watch's ID so each individual
+        # watch has its own notification history.
+        #
+        # This also means deleting a watch and
+        # creating a new one starts fresh.
+
+        watch_id = alert.get(
+            "id"
         )
 
+
+        if not watch_id:
+
+            watch_id = (
+                f"{alert['date']}|"
+                f"{alert['from']}|"
+                f"{alert['until']}|"
+                f"{alert['duration_minutes']}"
+            )
+
+
         previous = state.get(
-            watch_key,
+            watch_id,
             {}
         )
 
+
+        new_state = {}
+
+
         for slot_id, slot in current.items():
 
-            if slot_id not in previous:
+            if slot_id in previous:
 
-                print(
-                    f"NEW AVAILABILITY: "
-                    f"{slot['court']} "
-                    f"{slot['start']}-"
-                    f"{slot['end']}"
-                )
+                # Already notified and still available.
+                new_state[slot_id] = True
 
+                continue
+
+
+            print(
+                "\n🎾 NEW AVAILABILITY:"
+            )
+
+            print(
+                slot["court"],
+                slot["start"],
+                "-",
+                slot["end"]
+            )
+
+
+            # IMPORTANT:
+            # Only record the availability as
+            # notified if ntfy actually accepts it.
+
+            notification_sent = (
                 send_notification(
                     slot,
                     alert
                 )
+            )
 
-        # Only currently available courts remain in state.
+
+            if notification_sent:
+
+                new_state[slot_id] = True
+
+            else:
+
+                print(
+                    "Notification failed."
+                )
+
+                print(
+                    "Will try again on the next check."
+                )
+
+
+        # Only currently available courts remain
+        # in the notification state.
         #
         # Therefore:
         #
-        # Court 11 opens
+        # Court 5 opens
         # -> notification
         #
-        # Court 11 stays open
-        # -> no repeat notifications
-        #
-        # Court 5 opens later
-        # -> notification
+        # Court 5 remains open
+        # -> no repeat
         #
         # Court 5 gets booked
         # -> removed from state
         #
         # Court 5 opens again
         # -> notification again.
-        state[watch_key] = {
-            slot_id: True
-            for slot_id in current
-        }
 
-    save_state(state)
+        state[watch_id] = new_state
+
+
+    save_state(
+        state
+    )
 
 
 if __name__ == "__main__":
+
     main()
