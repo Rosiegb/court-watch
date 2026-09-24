@@ -18,12 +18,69 @@ def time_to_minutes(value):
     return hour * 60 + minute
 
 
+def extract_court_options(page):
+    """
+    After clicking a bookable slot, Better opens a selector
+    showing which individual courts are available.
+
+    Available courts appear as:
+        Highbury Fields Court 3
+
+    Unavailable courts appear as:
+        FULL - Highbury Fields Court 1
+    """
+
+    courts = []
+
+    selects = page.locator("select")
+
+    for i in range(selects.count()):
+        select = selects.nth(i)
+
+        try:
+            options = select.locator("option")
+            texts = []
+
+            for j in range(options.count()):
+                text = options.nth(j).inner_text().strip()
+
+                if "Highbury Fields Court" in text:
+                    texts.append(text)
+
+            if not texts:
+                continue
+
+            for text in texts:
+
+                if text.upper().startswith("FULL -"):
+                    continue
+
+                match = re.search(
+                    r"Highbury Fields Court\s+(\d+)",
+                    text,
+                    re.IGNORECASE
+                )
+
+                if match:
+                    court_number = match.group(1)
+
+                    courts.append(
+                        f"Highbury Fields Court {court_number}"
+                    )
+
+        except Exception as e:
+            print(f"Could not inspect court selector: {e}")
+
+    return sorted(set(courts))
+
+
 def extract_slots(page):
     slots = []
 
     links = page.locator('a[href*="/slot/"]')
 
     for i in range(links.count()):
+
         link = links.nth(i)
 
         try:
@@ -52,7 +109,9 @@ def extract_slots(page):
                 continue
 
             if href.startswith("/"):
-                full_url = "https://bookings.better.org.uk" + href
+                full_url = (
+                    "https://bookings.better.org.uk" + href
+                )
             else:
                 full_url = href
 
@@ -61,25 +120,70 @@ def extract_slots(page):
                 "end": end,
                 "duration_minutes": duration,
                 "url": full_url,
+                "link_index": i,
             })
 
         except Exception as e:
-            print(f"Could not read link: {e}")
+            print(f"Could not read slot: {e}")
 
     return slots
 
 
+def get_available_courts(page, slot):
+
+    links = page.locator('a[href*="/slot/"]')
+    link = links.nth(slot["link_index"])
+
+    try:
+        link.click()
+
+        page.wait_for_timeout(1000)
+
+        courts = extract_court_options(page)
+
+        # Close the booking selector.
+        page.keyboard.press("Escape")
+
+        page.wait_for_timeout(300)
+
+        print(
+            f"{slot['start']}-{slot['end']} "
+            f"available courts: {courts}"
+        )
+
+        return courts
+
+    except Exception as e:
+
+        print(
+            f"Could not inspect courts for "
+            f"{slot['start']}-{slot['end']}: {e}"
+        )
+
+        try:
+            page.keyboard.press("Escape")
+        except Exception:
+            pass
+
+        return []
+
+
 def check(alert):
+
     url = BETTER_URL.format(date=alert["date"])
 
-    print(f"\nChecking Better:")
+    print("\nChecking Better:")
     print(url)
 
     with sync_playwright() as p:
+
         browser = p.chromium.launch(headless=True)
 
         page = browser.new_page(
-            viewport={"width": 1440, "height": 1200},
+            viewport={
+                "width": 1440,
+                "height": 1200
+            },
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -104,6 +208,7 @@ def check(alert):
         matching = []
 
         for slot in slots:
+
             slot_start = time_to_minutes(slot["start"])
             slot_end = time_to_minutes(slot["end"])
 
@@ -118,52 +223,103 @@ def check(alert):
 
             matching.append(slot)
 
-        print("\nMATCHING AVAILABLE SLOTS:")
-        print(json.dumps(matching, indent=2))
+        print(
+            f"\nFound {len(matching)} matching "
+            f"bookable time slots."
+        )
+
+        results = []
+
+        for slot in matching:
+
+            courts = get_available_courts(
+                page,
+                slot
+            )
+
+            for court in courts:
+
+                results.append({
+                    "start": slot["start"],
+                    "end": slot["end"],
+                    "duration_minutes": slot[
+                        "duration_minutes"
+                    ],
+                    "court": court,
+                    "url": slot["url"],
+                })
+
+        print("\nAVAILABLE COURTS:")
+
+        print(
+            json.dumps(
+                results,
+                indent=2
+            )
+        )
 
         browser.close()
 
-        return matching
+        return results
 
 
 def load_state():
+
     if not STATE_FILE.exists():
         return {}
 
     try:
+
         with open(STATE_FILE) as f:
             return json.load(f)
+
     except Exception:
         return {}
 
 
 def save_state(state):
+
     with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+        json.dump(
+            state,
+            f,
+            indent=2
+        )
 
 
 def send_notification(slot, alert):
+
     topic = os.environ.get("NTFY_TOPIC")
 
     if not topic:
-        print("NTFY_TOPIC secret not found.")
+
+        print(
+            "NTFY_TOPIC secret not found."
+        )
+
         return
 
     message = (
         f"🎾 Highbury Tennis available\n"
-        f"{alert['date']} · {slot['start']}–{slot['end']}\n\n"
-        f"Tap to book:\n{slot['url']}"
+        f"{slot['court']}\n"
+        f"{alert['date']} · "
+        f"{slot['start']}–{slot['end']}\n\n"
+        f"Tap to book:\n"
+        f"{slot['url']}"
     )
 
     response = requests.post(
         "https://ntfy.sh/" + topic,
+
         data=message.encode("utf-8"),
+
         headers={
             "Title": "Highbury Tennis available",
             "Priority": "high",
             "Tags": "tennis",
             "Click": slot["url"],
         },
+
         timeout=30,
     )
 
@@ -177,58 +333,68 @@ def send_notification(slot, alert):
 def main():
 
     if not os.path.exists("alerts.json"):
-        print("No alerts configured.")
+
+        print(
+            "No alerts configured."
+        )
+
         return
 
     with open("alerts.json") as f:
         alerts = json.load(f)
 
     if not alerts:
-        print("No alerts configured.")
+
+        print(
+            "No alerts configured."
+        )
+
         return
 
     state = load_state()
+
     changed = False
 
     for alert in alerts:
 
-        matching_slots = check(alert)
+        available_slots = check(alert)
 
-        available_now = {
-            (
+        current = {}
+
+        for slot in available_slots:
+
+            slot_id = (
                 f"{alert['date']}-"
+                f"{slot['court']}-"
                 f"{slot['start']}-"
-                f"{slot['end']}-"
-                f"{slot['url']}"
-            ): slot
-            for slot in matching_slots
-        }
+                f"{slot['end']}"
+            )
 
-        previous_state = state.get(alert["date"], {})
+            current[slot_id] = slot
 
-        for slot_id, slot in available_now.items():
+        previous = state.get(
+            alert["date"],
+            {}
+        )
 
-            # Notify only when the slot has just become available.
-            if slot_id not in previous_state:
+        for slot_id, slot in current.items():
+
+            if slot_id not in previous:
+
                 print(
-                    f"NEW AVAILABILITY: "
+                    f"NEW COURT AVAILABILITY: "
+                    f"{slot['court']} "
                     f"{slot['start']}-{slot['end']}"
                 )
 
-                send_notification(slot, alert)
-
-            else:
-                print(
-                    f"Still available: "
-                    f"{slot['start']}-{slot['end']}"
+                send_notification(
+                    slot,
+                    alert
                 )
 
-        # Save the current availability.
-        # If a slot disappears and later reappears,
-        # it will be treated as NEW availability.
         state[alert["date"]] = {
             slot_id: True
-            for slot_id in available_now
+            for slot_id in current
         }
 
         changed = True
