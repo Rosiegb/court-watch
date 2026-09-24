@@ -1,113 +1,902 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>🎾 Court Watch</title>
 
-  <style>
-    * { box-sizing: border-box; }
+<meta charset="UTF-8">
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-      background: #f5f4f0;
-      color: #171717;
-      display: flex;
-      justify-content: center;
-    }
+<meta
+  name="viewport"
+  content="width=device-width,
+           initial-scale=1,
+           viewport-fit=cover"
+>
 
-    .app {
-      width: 100%;
-      max-width: 480px;
-      padding: 48px 22px 32px;
-    }
+<meta
+  name="theme-color"
+  content="#ffffff"
+>
 
-    .ball {
-      font-size: 42px;
-      margin-bottom: 14px;
-    }
+<title>Court Watch</title>
 
-    h1 {
-      font-size: 34px;
-      margin: 0 0 6px;
-      letter-spacing: -1.5px;
-    }
+<style>
 
-    .subtitle {
-      color: #777;
-      font-size: 16px;
-      margin-bottom: 34px;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    .card {
-      background: white;
-      border-radius: 22px;
-      padding: 22px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.06);
-      margin-bottom: 18px;
-    }
+body {
+  margin: 0;
+  background: #f6f6f4;
+  color: #111;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+}
 
-    .venue {
-      font-size: 18px;
-      font-weight: 600;
-    }
+main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    20px
+    calc(40px + env(safe-area-inset-bottom));
+}
 
-    .location {
-      color: #888;
-      margin-top: 4px;
-    }
+header {
+  padding: 24px 0 20px;
+}
 
-    .button {
-      display: block;
-      width: 100%;
-      padding: 17px;
-      border-radius: 15px;
-      background: #111;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      font-size: 17px;
-      font-weight: 600;
-      margin-top: 20px;
-    }
+.logo {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
 
-    .note {
-      text-align: center;
-      color: #888;
-      font-size: 13px;
-      line-height: 1.5;
-      margin-top: 22px;
-    }
-  </style>
+h1 {
+  font-size: 32px;
+  margin: 0 0 6px;
+  letter-spacing: -1px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 16px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow:
+    0 1px 4px rgba(0,0,0,.06);
+}
+
+.watch {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.watch-info {
+  min-width: 0;
+}
+
+.watch-date {
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 5px;
+}
+
+.watch-details {
+  color: #666;
+  font-size: 14px;
+}
+
+.status {
+  font-size: 13px;
+  margin-top: 7px;
+}
+
+.active {
+  color: #16803c;
+}
+
+.paused {
+  color: #999;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #111;
+  color: white;
+}
+
+button.secondary {
+  background: #eee;
+  color: #111;
+}
+
+button.delete {
+  background: #f1f1f1;
+  color: #c33;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+button:active {
+  transform: scale(.98);
+}
+
+.add {
+  width: 100%;
+  font-size: 16px;
+  padding: 16px;
+}
+
+.form {
+  display: none;
+}
+
+.form.show {
+  display: block;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin:
+    0
+    0
+    7px;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  background: white;
+  margin-bottom: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions button {
+  flex: 1;
+}
+
+.empty {
+  text-align: center;
+  color: #777;
+  padding: 20px 5px;
+}
+
+.settings {
+  margin-top: 24px;
+}
+
+.small {
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.token-box {
+  display: none;
+}
+
+.token-box.show {
+  display: block;
+}
+
+.message {
+  display: none;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.message.show {
+  display: block;
+}
+
+.success {
+  background: #e9f7ee;
+  color: #176b38;
+}
+
+.error {
+  background: #fff0f0;
+  color: #a33;
+}
+
+</style>
+
 </head>
 
+
 <body>
-  <main class="app">
 
-    <div class="ball">🎾</div>
+<main>
 
-    <h1>Court Watch</h1>
-    <div class="subtitle">Never miss a Highbury court.</div>
+<header>
 
-    <div class="card">
-      <div class="venue">Highbury Tennis</div>
-      <div class="location">Islington Tennis Centre</div>
+<div class="logo">🎾</div>
 
-      <a
-        class="button"
-        href="https://github.com/Rosiegb/court-watch/actions/workflows/check.yml"
-      >
-        Set up a court watch
-      </a>
-    </div>
+<h1>Court Watch</h1>
 
-    <div class="note">
-      Choose your date, time and duration on the next screen.<br>
-      Your iPhone will alert you when a court opens.
-    </div>
+<div class="subtitle">
+Never miss a Highbury court
+</div>
 
-  </main>
+</header>
+
+
+<div id="message"
+     class="message">
+</div>
+
+
+<div id="watchList"></div>
+
+
+<button
+  class="add"
+  onclick="showForm()"
+>
+＋ Add watch
+</button>
+
+
+<div
+  id="form"
+  class="card form"
+>
+
+<h2>Add watch</h2>
+
+<label>Date</label>
+
+<input
+  id="date"
+  type="date"
+/>
+
+
+<label>From</label>
+
+<input
+  id="from"
+  type="time"
+  value="08:00"
+/>
+
+
+<label>Until</label>
+
+<input
+  id="until"
+  type="time"
+  value="22:00"
+/>
+
+
+<label>Duration</label>
+
+<select id="duration">
+
+<option value="40">
+40 minutes
+</option>
+
+<option value="60"
+        selected>
+60 minutes
+</option>
+
+</select>
+
+
+<div class="form-actions">
+
+<button
+  class="secondary"
+  onclick="hideForm()"
+>
+Cancel
+</button>
+
+<button
+  onclick="addWatch()"
+>
+Save
+</button>
+
+</div>
+
+</div>
+
+
+<div class="settings">
+
+<div class="card">
+
+<button
+  class="secondary"
+  style="width:100%"
+  onclick="showToken()"
+>
+GitHub connection
+</button>
+
+<div
+  id="tokenBox"
+  class="token-box"
+>
+
+<br>
+
+<label>
+GitHub token
+</label>
+
+<input
+  id="token"
+  type="password"
+  placeholder="Paste your GitHub token"
+/>
+
+<button
+  onclick="saveToken()"
+  style="width:100%"
+>
+Save connection
+</button>
+
+<br><br>
+
+<div class="small">
+
+Your token stays on this iPhone/browser and
+is not written into the Court Watch repository.
+
+Use a fine-grained GitHub token with
+Actions → Read and write for this repository.
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</main>
+
+
+<script>
+
+const OWNER = "Rosiegb";
+
+const REPO = "court-watch";
+
+const WORKFLOW =
+  "check.yml";
+
+const BRANCH =
+  "main";
+
+const ALERTS_URL =
+  "https://raw.githubusercontent.com/" +
+  OWNER +
+  "/" +
+  REPO +
+  "/main/alerts.json";
+
+
+let watches = [];
+
+
+function getToken() {
+
+  return localStorage.getItem(
+    "courtWatchGithubToken"
+  );
+
+}
+
+
+function showMessage(
+  text,
+  type = "success"
+) {
+
+  const box =
+    document.getElementById(
+      "message"
+    );
+
+  box.textContent = text;
+
+  box.className =
+    "message show " + type;
+
+  setTimeout(
+    () => {
+      box.className =
+        "message";
+    },
+    4000
+  );
+
+}
+
+
+async function loadWatches() {
+
+  try {
+
+    const response =
+      await fetch(
+        ALERTS_URL +
+        "?t=" +
+        Date.now()
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "Could not load watches."
+      );
+    }
+
+    watches =
+      await response.json();
+
+    render();
+
+  } catch (error) {
+
+    watches = [];
+
+    render();
+
+  }
+
+}
+
+
+function render() {
+
+  const container =
+    document.getElementById(
+      "watchList"
+    );
+
+  container.innerHTML = "";
+
+  if (!watches.length) {
+
+    container.innerHTML = `
+      <div class="card empty">
+        No watches yet.<br>
+        Add a date and time to start watching.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  watches.forEach(
+    (watch, index) => {
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+      card.className =
+        "card";
+
+
+      const enabled =
+        watch.enabled !== false;
+
+
+      const date =
+        new Date(
+          watch.date +
+          "T12:00:00"
+        );
+
+
+      const dateText =
+        date.toLocaleDateString(
+          "en-GB",
+          {
+            weekday: "short",
+            day: "numeric",
+            month: "short"
+          }
+        );
+
+
+      card.innerHTML = `
+
+        <div class="watch">
+
+          <div class="watch-info">
+
+            <div class="watch-date">
+              ${dateText}
+            </div>
+
+            <div class="watch-details">
+              ${watch.from}
+              –
+              ${watch.until}
+              ·
+              ${watch.duration_minutes}
+              min
+            </div>
+
+            <div class="status ${
+              enabled
+                ? "active"
+                : "paused"
+            }">
+
+              ${
+                enabled
+                  ? "● Watching all courts"
+                  : "● Paused"
+              }
+
+            </div>
+
+          </div>
+
+          <button
+            class="secondary"
+            onclick="toggleWatch(${index})"
+          >
+
+            ${
+              enabled
+                ? "Pause"
+                : "Resume"
+            }
+
+          </button>
+
+        </div>
+
+        <br>
+
+        <button
+          class="delete"
+          onclick="deleteWatch(${index})"
+        >
+          Delete
+        </button>
+
+      `;
+
+      container.appendChild(
+        card
+      );
+
+    }
+  );
+
+}
+
+
+function showForm() {
+
+  document
+    .getElementById("form")
+    .classList.add("show");
+
+}
+
+
+function hideForm() {
+
+  document
+    .getElementById("form")
+    .classList.remove("show");
+
+}
+
+
+function showToken() {
+
+  document
+    .getElementById("tokenBox")
+    .classList.toggle("show");
+
+  const token =
+    getToken();
+
+  if (token) {
+
+    document
+      .getElementById("token")
+      .value = token;
+
+  }
+
+}
+
+
+function saveToken() {
+
+  const token =
+    document
+      .getElementById("token")
+      .value
+      .trim();
+
+  if (!token) {
+
+    showMessage(
+      "Please paste your GitHub token.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  localStorage.setItem(
+    "courtWatchGithubToken",
+    token
+  );
+
+  showMessage(
+    "GitHub connection saved."
+  );
+
+}
+
+
+function addWatch() {
+
+  const date =
+    document
+      .getElementById("date")
+      .value;
+
+  const from =
+    document
+      .getElementById("from")
+      .value;
+
+  const until =
+    document
+      .getElementById("until")
+      .value;
+
+  const duration =
+    Number(
+      document
+        .getElementById("duration")
+        .value
+    );
+
+
+  if (!date) {
+
+    showMessage(
+      "Choose a date.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  if (from >= until) {
+
+    showMessage(
+      "Until time must be after from time.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  watches.push({
+
+    id:
+      crypto.randomUUID(),
+
+    date,
+
+    from,
+
+    until,
+
+    duration_minutes:
+      duration,
+
+    enabled:
+      true,
+
+    court:
+      "any"
+
+  });
+
+
+  syncWatches();
+
+}
+
+
+function toggleWatch(index) {
+
+  watches[index].enabled =
+    watches[index].enabled === false;
+
+  syncWatches();
+
+}
+
+
+function deleteWatch(index) {
+
+  if (
+    !confirm(
+      "Delete this watch?"
+    )
+  ) {
+    return;
+  }
+
+  watches.splice(
+    index,
+    1
+  );
+
+  syncWatches();
+
+}
+
+
+async function syncWatches() {
+
+  const token =
+    getToken();
+
+
+  if (!token) {
+
+    showToken();
+
+    showMessage(
+      "Add your GitHub connection first.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  render();
+
+
+  const payload =
+    JSON.stringify(
+      watches
+    );
+
+
+  try {
+
+    const response =
+      await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+        {
+          method: "POST",
+
+          headers: {
+
+            "Accept":
+              "application/vnd.github+json",
+
+            "Authorization":
+              "Bearer " + token,
+
+            "X-GitHub-Api-Version":
+              "2026-03-10",
+
+            "Content-Type":
+              "application/json"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              ref:
+                BRANCH,
+
+              inputs: {
+
+                action:
+                  "update",
+
+                watches:
+                  payload
+
+              }
+
+            })
+
+        }
+      );
+
+
+    if (!response.ok) {
+
+      const text =
+        await response.text();
+
+      throw new Error(
+        text ||
+        "GitHub rejected the request."
+      );
+
+    }
+
+
+    hideForm();
+
+    showMessage(
+      "Saved. Court Watch is updating."
+    );
+
+
+  } catch (error) {
+
+    showMessage(
+      "Couldn't save the watch. Check your GitHub connection.",
+      "error"
+    );
+
+    console.error(error);
+
+  }
+
+}
+
+
+loadWatches();
+
+</script>
+
 </body>
+
 </html>
