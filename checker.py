@@ -10,7 +10,7 @@ BETTER_URL = (
     "location/islington-tennis-centre/highbury-tennis/{date}/by-time"
 )
 
-SEEN_FILE = Path("seen_slots.json")
+STATE_FILE = Path("slot_state.json")
 
 
 def time_to_minutes(value):
@@ -28,7 +28,6 @@ def extract_slots(page):
 
         try:
             href = link.get_attribute("href")
-            text = link.inner_text().strip()
 
             if not href:
                 continue
@@ -61,7 +60,6 @@ def extract_slots(page):
                 "start": start,
                 "end": end,
                 "duration_minutes": duration,
-                "text": text,
                 "url": full_url,
             })
 
@@ -120,7 +118,7 @@ def check(alert):
 
             matching.append(slot)
 
-        print("\nMATCHING SLOTS:")
+        print("\nMATCHING AVAILABLE SLOTS:")
         print(json.dumps(matching, indent=2))
 
         browser.close()
@@ -128,20 +126,20 @@ def check(alert):
         return matching
 
 
-def load_seen():
-    if not SEEN_FILE.exists():
-        return set()
+def load_state():
+    if not STATE_FILE.exists():
+        return {}
 
     try:
-        with open(SEEN_FILE) as f:
-            return set(json.load(f))
+        with open(STATE_FILE) as f:
+            return json.load(f)
     except Exception:
-        return set()
+        return {}
 
 
-def save_seen(seen):
-    with open(SEEN_FILE, "w") as f:
-        json.dump(sorted(seen), f, indent=2)
+def save_state(state):
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
 
 
 def send_notification(slot, alert):
@@ -189,33 +187,54 @@ def main():
         print("No alerts configured.")
         return
 
-    seen = load_seen()
+    state = load_state()
     changed = False
 
     for alert in alerts:
 
         matching_slots = check(alert)
 
-        for slot in matching_slots:
-
-            slot_id = (
+        available_now = {
+            (
                 f"{alert['date']}-"
                 f"{slot['start']}-"
                 f"{slot['end']}-"
                 f"{slot['url']}"
-            )
+            ): slot
+            for slot in matching_slots
+        }
 
-            if slot_id in seen:
-                print(f"Already notified: {slot['start']}-{slot['end']}")
-                continue
+        previous_state = state.get(alert["date"], {})
 
-            send_notification(slot, alert)
+        for slot_id, slot in available_now.items():
 
-            seen.add(slot_id)
-            changed = True
+            # Notify only when the slot has just become available.
+            if slot_id not in previous_state:
+                print(
+                    f"NEW AVAILABILITY: "
+                    f"{slot['start']}-{slot['end']}"
+                )
+
+                send_notification(slot, alert)
+
+            else:
+                print(
+                    f"Still available: "
+                    f"{slot['start']}-{slot['end']}"
+                )
+
+        # Save the current availability.
+        # If a slot disappears and later reappears,
+        # it will be treated as NEW availability.
+        state[alert["date"]] = {
+            slot_id: True
+            for slot_id in available_now
+        }
+
+        changed = True
 
     if changed:
-        save_seen(seen)
+        save_state(state)
 
 
 if __name__ == "__main__":
