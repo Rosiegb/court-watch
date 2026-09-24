@@ -1,34 +1,9 @@
 [
   {
-    "date": "2026-09-26",
-    "from": "19:00",
-    "until": "22:00",
-    "duration_minutes": 60,
-    "court": "any"
-  },
-  {
     "id": "b0ab20bf-d166-4555-9b6e-4d224da02ce4",
     "date": "2026-09-25",
     "from": "17:00",
     "until": "18:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
-  },
-  {
-    "id": "4b000e11-fa13-42a3-a24d-5795db8322a9",
-    "date": "2026-09-26",
-    "from": "17:00",
-    "until": "22:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
-  },
-  {
-    "id": "fa428497-7064-434e-8123-541a59b3e5a5",
-    "date": "2026-09-26",
-    "from": "19:00",
-    "until": "22:00",
     "duration_minutes": 60,
     "enabled": true,
     "court": "any"
