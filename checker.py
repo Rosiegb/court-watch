@@ -8,8 +8,7 @@ from playwright.sync_api import sync_playwright
 
 BETTER_URL = (
     "https://bookings.better.org.uk/"
-    "location/islington-tennis-centre/"
-    "highbury-tennis/{date}/by-time"
+    "location/islington-tennis-centre/highbury-tennis/{date}/by-time"
 )
 
 STATE_FILE = Path("slot_state.json")
@@ -21,8 +20,6 @@ def time_to_minutes(value):
 
 
 def close_cookie_banner(page):
-    """Safely remove Better's cookie overlay."""
-
     try:
         page.evaluate("""
             () => {
@@ -54,9 +51,7 @@ def close_cookie_banner(page):
 
 
 def extract_slots(page):
-    """
-    Find Better time slots that have a bookable link.
-    """
+    """Find Better time slots that have a bookable link."""
 
     slots = []
 
@@ -113,6 +108,7 @@ def extract_slots(page):
                 f"Could not read slot: {e}"
             )
 
+
     unique = {}
 
     for slot in slots:
@@ -129,9 +125,6 @@ def extract_slots(page):
 
 
 def get_court_selector(page):
-    """
-    Find Better's custom React/ARIA court selector.
-    """
 
     selectors = [
         'input[role="combobox"][aria-label="Select location"]',
@@ -157,9 +150,6 @@ def get_court_selector(page):
 
 
 def open_court_selector(page):
-    """
-    Open Better's custom court dropdown.
-    """
 
     selector = get_court_selector(page)
 
@@ -172,7 +162,7 @@ def open_court_selector(page):
         return False
 
 
-    # Method 1: keyboard
+    # Try keyboard first.
 
     try:
 
@@ -199,12 +189,13 @@ def open_court_selector(page):
         pass
 
 
-    # Method 2: mouse events
+    # Try mouse events.
 
     try:
 
         selector.evaluate("""
             el => {
+
                 const eventOptions = {
                     bubbles: true,
                     cancelable: true,
@@ -247,12 +238,13 @@ def open_court_selector(page):
         pass
 
 
-    # Method 3: click React Select control
+    # Try clicking the React control.
 
     try:
 
         selector.evaluate("""
             el => {
+
                 let node = el;
 
                 for (
@@ -265,7 +257,9 @@ def open_court_selector(page):
                         node.getAttribute &&
                         node.getAttribute("role") === "combobox"
                     ) {
+
                         node.click();
+
                         return;
                     }
 
@@ -291,29 +285,12 @@ def open_court_selector(page):
 
 
 def extract_available_courts(page):
-    """
-    Return individual available Highbury courts.
-
-    Courts 1-11 are recognised.
-
-    A court shown as:
-
-        Highbury Fields Court 3
-
-    is available.
-
-    A court shown as:
-
-        FULL - Highbury Fields Court 3
-
-    is unavailable.
-    """
 
     courts = []
 
 
     # Preferred method:
-    # React Select menu options.
+    # read React Select options.
 
     options = page.locator(
         '[role="option"]'
@@ -710,14 +687,12 @@ def save_state(state):
 
 
 def send_notification(
-    slot,
+    new_slots,
     alert
 ):
     """
-    Send the iPhone notification.
-
-    Returns True only when ntfy accepts
-    the notification successfully.
+    Send ONE notification containing all
+    newly available courts/times for this watch.
     """
 
     topic = os.environ.get(
@@ -734,13 +709,91 @@ def send_notification(
         return False
 
 
+    # Group courts that share the same time.
+
+    groups = {}
+
+    for slot in new_slots:
+
+        key = (
+            slot["start"],
+            slot["end"]
+        )
+
+        groups.setdefault(
+            key,
+            []
+        ).append(
+            slot["court"]
+        )
+
+
+    lines = []
+
+
+    for (
+        start,
+        end
+    ), courts in sorted(
+        groups.items()
+    ):
+
+        court_numbers = []
+
+        for court in courts:
+
+            match = re.search(
+                r"(\d+)$",
+                court
+            )
+
+            if match:
+                court_numbers.append(
+                    int(match.group(1))
+                )
+
+
+        court_numbers.sort()
+
+
+        if len(court_numbers) == 1:
+
+            court_text = (
+                f"Court {court_numbers[0]}"
+            )
+
+        elif len(court_numbers) == 2:
+
+            court_text = (
+                f"Courts {court_numbers[0]} "
+                f"& {court_numbers[1]}"
+            )
+
+        else:
+
+            court_text = (
+                "Courts "
+                + ", ".join(
+                    str(n)
+                    for n in court_numbers[:-1]
+                )
+                + " & "
+                + str(court_numbers[-1])
+            )
+
+
+        lines.append(
+            f"{court_text} · "
+            f"{start}–{end}"
+        )
+
+
     message = (
-        "🎾 Highbury Tennis available\n"
-        f"{slot['court']}\n"
-        f"{alert['date']} · "
-        f"{slot['start']}–{slot['end']}\n\n"
+        "🎾 Highbury Tennis available\n\n"
+        + "\n".join(lines)
+        + "\n\n"
         "Tap to book:\n"
-        f"{slot['url']}"
+        + new_slots[0]["url"]
     )
 
 
@@ -757,7 +810,7 @@ def send_notification(
             headers={
 
                 "Title":
-                    "Highbury Tennis available",
+                    "🎾 Highbury Tennis available",
 
                 "Priority":
                     "high",
@@ -766,7 +819,7 @@ def send_notification(
                     "tennis",
 
                 "Click":
-                    slot["url"],
+                    new_slots[0]["url"],
 
             },
 
@@ -845,7 +898,8 @@ def main():
 
     for alert in alerts:
 
-        # Paused watches are ignored.
+        # Respect Pause from the iPhone app.
+
         if alert.get(
             "enabled",
             True
@@ -893,103 +947,106 @@ def main():
             current[slot_id] = slot
 
 
-        # Use the watch's ID so each individual
-        # watch has its own notification history.
-        #
-        # This also means deleting a watch and
-        # creating a new one starts fresh.
+        # Each watch gets its own state.
 
-        watch_id = alert.get(
-            "id"
+        watch_key = (
+            f"{alert['date']}|"
+            f"{alert['from']}|"
+            f"{alert['until']}|"
+            f"{alert['duration_minutes']}"
         )
 
 
-        if not watch_id:
-
-            watch_id = (
-                f"{alert['date']}|"
-                f"{alert['from']}|"
-                f"{alert['until']}|"
-                f"{alert['duration_minutes']}"
-            )
-
-
         previous = state.get(
-            watch_id,
+            watch_key,
             {}
         )
 
 
-        new_state = {}
+        # Find only genuinely NEW availability.
+
+        new_slots = [
+            slot
+            for slot_id, slot in current.items()
+            if slot_id not in previous
+        ]
 
 
-        for slot_id, slot in current.items():
-
-            if slot_id in previous:
-
-                # Already notified and still available.
-                new_state[slot_id] = True
-
-                continue
-
+        if new_slots:
 
             print(
-                "\n🎾 NEW AVAILABILITY:"
+                "\nNEW AVAILABILITY:"
             )
 
-            print(
-                slot["court"],
-                slot["start"],
-                "-",
-                slot["end"]
-            )
+            for slot in new_slots:
+
+                print(
+                    f"{slot['court']} "
+                    f"{slot['start']}-"
+                    f"{slot['end']}"
+                )
 
 
-            # IMPORTANT:
-            # Only record the availability as
-            # notified if ntfy actually accepts it.
+            # ONE notification for all new courts.
 
             notification_sent = (
                 send_notification(
-                    slot,
+                    new_slots,
                     alert
                 )
             )
 
+        else:
 
-            if notification_sent:
+            notification_sent = True
+
+
+        /*
+        Keep courts that were already known
+        to be available.
+
+        New courts are only added to state
+        if the notification was successfully
+        accepted by ntfy.
+        */
+
+        new_state = {}
+
+
+        for slot_id in current:
+
+            if slot_id in previous:
 
                 new_state[slot_id] = True
 
-            else:
 
-                print(
-                    "Notification failed."
+        if notification_sent:
+
+            for slot in new_slots:
+
+                slot_id = (
+                    f"{alert['date']}-"
+                    f"{slot['court']}-"
+                    f"{slot['start']}-"
+                    f"{slot['end']}"
                 )
 
-                print(
-                    "Will try again on the next check."
-                )
+                new_state[slot_id] = True
 
 
-        # Only currently available courts remain
-        # in the notification state.
-        #
-        # Therefore:
-        #
-        # Court 5 opens
-        # -> notification
-        #
-        # Court 5 remains open
-        # -> no repeat
-        #
-        # Court 5 gets booked
-        # -> removed from state
-        #
-        # Court 5 opens again
-        # -> notification again.
+        else:
 
-        state[watch_id] = new_state
+            print(
+                "Notification failed."
+            )
+
+            print(
+                "New availability will be "
+                "retried on the next check."
+            )
+
+
+        state[watch_key] = new_state
 
 
     save_state(
