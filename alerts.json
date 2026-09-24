@@ -5,5 +5,23 @@
     "until": "22:00",
     "duration_minutes": 60,
     "court": "any"
+  },
+  {
+    "id": "b0ab20bf-d166-4555-9b6e-4d224da02ce4",
+    "date": "2026-09-25",
+    "from": "17:00",
+    "until": "18:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  },
+  {
+    "id": "601fb479-2e66-4d39-9a7f-14c2606c9eb5",
+    "date": "2026-09-25",
+    "from": "17:00",
+    "until": "18:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
   }
 ]
