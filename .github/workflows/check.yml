@@ -33,11 +33,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: court-watch
+  cancel-in-progress: false
+
 jobs:
+
   check:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -50,13 +57,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install playwright requests
           playwright install --with-deps chromium
 
       - name: Update watch settings
         if: github.event_name == 'workflow_dispatch'
         run: |
-          cat > alerts.json <<'EOF'
+          cat > alerts.json <<EOF
           [
             {
               "date": "${{ inputs.date }}",
@@ -71,14 +79,19 @@ jobs:
       - name: Check courts
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        run: python checker.py
-
-      - name: Save changes
         run: |
-          if [ -f alerts.json ] || [ -f seen_slots.json ] || [ -f slot_state.json ]; then
-            git config user.name "Court Watch"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add alerts.json seen_slots.json slot_state.json
-            git diff --cached --quiet || git commit -m "Update Court Watch settings"
+          python checker.py
+
+      - name: Save state
+        run: |
+          git config user.name "Court Watch"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add alerts.json slot_state.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to save."
+          else
+            git commit -m "Update Court Watch state"
             git push
           fi
