@@ -442,7 +442,7 @@ function showMessage(
       box.className =
         "message";
     },
-    4000
+    5000
   );
 
 }
@@ -784,6 +784,21 @@ function deleteWatch(index) {
 }
 
 
+/*
+  SAVE WATCHES TO GITHUB
+  ----------------------
+
+  This version first enables the GitHub workflow.
+  That means the app still works if the workflow
+  was previously disabled.
+
+  It then dispatches the workflow with the
+  current watch list.
+
+  If anything fails, the previous watch list
+  is restored in the app.
+*/
+
 async function syncWatches() {
 
   const token =
@@ -804,6 +819,17 @@ async function syncWatches() {
   }
 
 
+  /*
+    Keep a copy so that if GitHub rejects
+    the save, we can restore the previous state.
+  */
+
+  const previousWatches =
+    JSON.parse(
+      JSON.stringify(watches)
+    );
+
+
   render();
 
 
@@ -814,6 +840,57 @@ async function syncWatches() {
 
 
   try {
+
+
+    /*
+      STEP 1
+      Ensure the workflow is enabled.
+
+      This is important because if the workflow
+      was previously disabled in GitHub, GitHub
+      will not accept a workflow dispatch.
+    */
+
+    const enableResponse =
+      await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/enable`,
+        {
+          method: "PUT",
+
+          headers: {
+
+            "Accept":
+              "application/vnd.github+json",
+
+            "Authorization":
+              "Bearer " + token,
+
+            "X-GitHub-Api-Version":
+              "2026-03-10"
+
+          }
+
+        }
+      );
+
+
+    if (!enableResponse.ok) {
+
+      const text =
+        await enableResponse.text();
+
+      throw new Error(
+        `Could not enable Court Watch (${enableResponse.status}): ${text}`
+      );
+
+    }
+
+
+    /*
+      STEP 2
+      Tell GitHub to run the management
+      part of the workflow and save the watches.
+    */
 
     const response =
       await fetch(
@@ -865,8 +942,7 @@ async function syncWatches() {
         await response.text();
 
       throw new Error(
-        text ||
-        "GitHub rejected the request."
+        `GitHub rejected the request (${response.status}): ${text}`
       );
 
     }
@@ -874,19 +950,42 @@ async function syncWatches() {
 
     hideForm();
 
+
     showMessage(
-      "Saved. Court Watch is updating."
+      "🎾 Saved. Court Watch is updating."
     );
 
 
   } catch (error) {
 
-    showMessage(
-      "Couldn't save the watch. Check your GitHub connection.",
-      "error"
+
+    /*
+      GitHub did not accept the change,
+      so restore the previous state.
+    */
+
+    watches =
+      previousWatches;
+
+    render();
+
+
+    console.error(
+      "Court Watch save error:",
+      error
     );
 
-    console.error(error);
+
+    /*
+      Show the actual GitHub error instead
+      of the vague old error message.
+    */
+
+    showMessage(
+      error.message ||
+      "Couldn't save the watch.",
+      "error"
+    );
 
   }
 
