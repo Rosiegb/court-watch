@@ -1,7 +1,7 @@
 [
   {
-    "id": "e022b8e0-76f6-4416-9106-870b9dafda01",
-    "date": "2026-10-02",
+    "id": "492a9884-ae24-4de5-bcf2-cac3d6bde218",
+    "date": "2026-10-05",
     "from": "17:00",
     "until": "18:00",
     "duration_minutes": 60,
@@ -9,8 +9,8 @@
     "court": "any"
   },
   {
-    "id": "492a9884-ae24-4de5-bcf2-cac3d6bde218",
-    "date": "2026-10-05",
+    "id": "9ae975ca-6282-44ef-8153-eb5110ee6b2f",
+    "date": "2026-10-06",
     "from": "17:00",
     "until": "18:00",
     "duration_minutes": 60,
