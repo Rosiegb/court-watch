@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "ac6c85a8-68a0-43b0-b71b-12c1b4fd090b",
+    "date": "2026-10-08",
+    "from": "17:00",
+    "until": "19:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  }
+]
