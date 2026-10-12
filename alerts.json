@@ -1,11 +1,1 @@
-[
-  {
-    "id": "ccd5fc21-3165-4c12-8753-a8381d152f72",
-    "date": "2026-10-11",
-    "from": "09:00",
-    "until": "12:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
-  }
-]
+[]
