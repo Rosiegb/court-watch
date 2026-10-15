@@ -1,14 +1,5 @@
 [
   {
-    "id": "c59bd02a-0239-4004-85e6-e84cc2de8f21",
-    "date": "2026-10-16",
-    "from": "17:00",
-    "until": "18:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
-  },
-  {
     "id": "4a537fb5-053b-4008-9795-00beaf93e707",
     "date": "2026-10-17",
     "from": "09:00",
