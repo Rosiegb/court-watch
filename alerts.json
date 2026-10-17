@@ -18,10 +18,19 @@
     "court": "any"
   },
   {
-    "id": "52ec28db-e20d-4d7a-8d22-f6870a677172",
-    "date": "2026-10-17",
+    "id": "68dcc410-b671-4051-a04f-41b7a1674394",
+    "date": "2026-10-18",
     "from": "17:00",
     "until": "18:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  },
+  {
+    "id": "76d5a794-d20a-46e7-84ad-c9c397180cd9",
+    "date": "2026-10-17",
+    "from": "17:00",
+    "until": "19:00",
     "duration_minutes": 60,
     "enabled": true,
     "court": "any"
