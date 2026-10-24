@@ -1,9 +1,7 @@
 {
   "fda9e430-c669-4a7b-967b-d37eb06cccbe": [],
   "eebe0176-e6fd-498b-b60e-4a1316fdd27f": [],
-  "bd41fd2f-6597-4ecb-9b68-216ef3ce15ab": [
-    "17:00|18:00|Highbury Fields Court 1"
-  ],
+  "bd41fd2f-6597-4ecb-9b68-216ef3ce15ab": [],
   "45885acc-4fe3-4190-a255-2c5b6412e30a": [
     "08:00|09:00|Highbury Fields Court 1",
     "09:00|10:00|Highbury Fields Court 1",
@@ -12,7 +10,6 @@
     "12:00|13:00|Highbury Fields Court 1",
     "13:00|14:00|Highbury Fields Court 1",
     "15:00|16:00|Highbury Fields Court 1",
-    "16:00|17:00|Highbury Fields Court 1",
-    "17:00|18:00|Highbury Fields Court 1"
+    "16:00|17:00|Highbury Fields Court 1"
   ]
 }
