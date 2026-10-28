@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "b5b00293-e347-415a-ae21-819b30e6a5c6",
+    "date": "2026-10-30",
+    "from": "17:00",
+    "until": "19:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  }
+]
