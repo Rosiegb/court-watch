@@ -2,9 +2,6 @@
 name: Court Watch
 
 on:
-  push:
-    paths:
-      - alerts.json
   schedule:
     - cron: "2-59/5 * * * *"
 
@@ -94,9 +91,9 @@ jobs:
           git config user.name "Court Watch"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Keep the GitHub Pages app copy in sync with the canonical alert list.
-          cp alerts.json app/alerts.json
-          git add alerts.json app/alerts.json slot_state.json
+          # Alert data is read directly from the canonical GitHub file by the app.
+          # Avoid changing the Pages app bundle for every alert edit.
+          git add alerts.json slot_state.json
 
           if git diff --cached --quiet; then
             echo "No changes."
