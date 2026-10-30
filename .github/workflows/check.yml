@@ -2,6 +2,9 @@
 name: Court Watch
 
 on:
+  push:
+    paths:
+      - alerts.json
   schedule:
     - cron: "2-59/5 * * * *"
 
@@ -103,7 +106,7 @@ jobs:
           fi
 
   check:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
