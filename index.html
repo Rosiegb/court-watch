@@ -468,20 +468,34 @@ async function loadWatches() {
 
   try {
 
-    const response =
-      await fetch(
-        ALERTS_URL +
-        "?t=" +
-        Date.now()
-      );
+    // Try the raw JSON file first, then GitHub's Contents API as a fallback.
+    // Both URLs point to the public repository; no token is needed to read alerts.
+    let latest;
+    let loadError;
 
-    if (!response.ok) {
-      throw new Error(
-        "Could not load watches."
+    try {
+      const response = await fetch(
+        ALERTS_URL + "?t=" + Date.now(),
+        { cache: "no-store" }
       );
+      if (!response.ok) throw new Error("Raw alerts request returned HTTP " + response.status);
+      latest = await response.json();
+    } catch (error) {
+      loadError = error;
+      const apiResponse = await fetch(
+        "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/alerts.json?ref=" + BRANCH,
+        { cache: "no-store", headers: { "Accept": "application/vnd.github+json" } }
+      );
+      if (!apiResponse.ok) {
+        throw new Error("Raw file: " + (loadError.message || loadError) + "; GitHub API: HTTP " + apiResponse.status);
+      }
+      const file = await apiResponse.json();
+      if (!file.content || file.encoding !== "base64") throw new Error("GitHub returned an unexpected alerts file format.");
+      const decoded = atob(file.content.replace(/\\s/g, ""));
+      const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
+      latest = JSON.parse(new TextDecoder().decode(bytes));
     }
 
-    const latest = await response.json();
     if (!Array.isArray(latest)) {
       throw new Error("The saved alert list is invalid.");
     }
@@ -496,14 +510,18 @@ async function loadWatches() {
     if (pendingPayload && latestPayload === pendingPayload) {
       pendingPayload = null;
     }
-    watches = latest;
+    watches = latest.slice().sort((a, b) =>
+      String(a.date || "").localeCompare(String(b.date || "")) ||
+      String(a.from || "").localeCompare(String(b.from || "")) ||
+      String(a.until || "").localeCompare(String(b.until || ""))
+    );
     watchesLoaded = true;
     render();
 
   } catch (error) {
     watchesLoaded = false;
     render();
-    showMessage("Couldn't load saved alerts. Check your connection and refresh before making changes.", "error");
+    showMessage("Couldn't load saved alerts: " + (error.message || "network error") + ". Check your connection and refresh before making changes.", "error");
   }
 
 }
@@ -518,15 +536,18 @@ function render() {
 
   container.innerHTML = "";
 
-  if (!watches.length) {
+  if (!watchesLoaded) {
+    container.innerHTML = '<div class="card empty">Loading saved alerts…</div>';
+    return;
+  }
 
+  if (!watches.length) {
     container.innerHTML = `
       <div class="card empty">
         No watches yet.<br>
         Add a date and time to start watching.
       </div>
     `;
-
     return;
   }
 
