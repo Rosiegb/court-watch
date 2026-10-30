@@ -864,7 +864,10 @@ async function syncWatches(previousWatches) {
       await loadWatches();
     }
     if (pendingPayload) {
-      showMessage("GitHub accepted your change. Publishing is taking longer than usual; your alert remains visible. Refresh a little later.", "error");
+      // Do not leave the app permanently stuck showing an unconfirmed optimistic list.
+      pendingPayload = null;
+      await loadWatches();
+      showMessage("GitHub accepted the update, but it has not appeared in the saved list yet. The app has reloaded the confirmed version; try again in a moment.", "error");
     } else {
       showMessage("🎾 Alerts saved and published.");
     }
