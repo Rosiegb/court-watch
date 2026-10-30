@@ -16,5 +16,14 @@
     "duration_minutes": 60,
     "enabled": true,
     "court": "any"
+  },
+  {
+    "id": "court-watch-ntfy-test-20261030",
+    "date": "2026-10-30",
+    "from": "12:00",
+    "until": "13:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
   }
 ]
