@@ -823,9 +823,13 @@ async function syncWatches(previousWatches) {
     return;
   }
   if (syncing) return;
+
   syncing = true;
-  render();
   const payload = JSON.stringify(watches);
+  // Keep the optimistic list visible while GitHub Actions and Pages catch up.
+  pendingPayload = payload;
+  render();
+
   try {
     const enableResponse = await fetch(
       `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/enable`,
@@ -835,6 +839,7 @@ async function syncWatches(previousWatches) {
       const text = await enableResponse.text();
       throw new Error(`Could not enable Court Watch (${enableResponse.status}): ${text}`);
     }
+
     const response = await fetch(
       `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
       {
@@ -847,23 +852,24 @@ async function syncWatches(previousWatches) {
       const text = await response.text();
       throw new Error(`GitHub rejected the request (${response.status}): ${text}`);
     }
-    pendingPayload = JSON.stringify(watches);
+
     selectedDates = [];
     renderSelectedDates();
     hideForm();
-    showMessage("🎾 Update accepted by GitHub. Waiting for the alert list to sync…");
-    // workflow_dispatch is asynchronous; don't immediately reload stale alerts.
-    // Poll the public alerts file until the workflow's commit becomes visible.
-    for (let attempt = 0; attempt < 15 && pendingPayload; attempt++) {
+    showMessage("🎾 Update accepted by GitHub. Publishing the saved alerts…");
+
+    // Do not replace the user's list with an older Pages deployment.
+    for (let attempt = 0; attempt < 30 && pendingPayload; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       await loadWatches();
     }
     if (pendingPayload) {
-      showMessage("GitHub accepted the update, but syncing is taking longer than usual. Your changes will stay visible and the app will keep checking.", "error");
+      showMessage("GitHub accepted your change. Publishing is taking longer than usual; your alert remains visible. Refresh a little later.", "error");
     } else {
-      showMessage("🎾 Alerts saved and synced.");
+      showMessage("🎾 Alerts saved and published.");
     }
   } catch (error) {
+    pendingPayload = null;
     watches = previousWatches || watches;
     render();
     console.error("Court Watch save error:", error);
@@ -881,7 +887,7 @@ loadWatches();
 // brought back to the foreground. Avoid overwriting an alert being edited.
 function refreshIfSafe() {
   const formOpen = document.getElementById("form").classList.contains("show");
-  if (!syncing && !formOpen) loadWatches();
+  if (!syncing && !formOpen && !pendingPayload) loadWatches();
 }
 window.addEventListener("focus", refreshIfSafe);
 window.addEventListener("pageshow", refreshIfSafe);
