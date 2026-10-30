@@ -433,7 +433,6 @@ function deleteWatch(index) {
 
 async function syncWatches(previousWatches) {
   const token = getToken();
-
   if (!token) {
     watches = previousWatches || watches;
     render();
@@ -441,26 +440,18 @@ async function syncWatches(previousWatches) {
     showMessage("Add your GitHub connection first. No changes have been saved.", "error");
     return;
   }
-
   if (syncing) return;
-  syncing = true;
-  render();
 
+  syncing = true;
   const payload = JSON.stringify(watches);
+  pendingPayload = payload;
+  render();
 
   try {
     const enableResponse = await fetch(
       `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/enable`,
-      {
-        method: "PUT",
-        headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": "Bearer " + token,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
-      }
+      {method:"PUT", headers:{"Accept":"application/vnd.github+json", "Authorization":"Bearer " + token, "X-GitHub-Api-Version":"2022-11-28"}}
     );
-
     if (!enableResponse.ok) {
       const text = await enableResponse.text();
       throw new Error(`Could not enable Court Watch (${enableResponse.status}): ${text}`);
@@ -469,42 +460,32 @@ async function syncWatches(previousWatches) {
     const response = await fetch(
       `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
       {
-        method: "POST",
-        headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": "Bearer " + token,
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          ref: BRANCH,
-          inputs: { action: "update", watches: payload }
-        })
+        method:"POST",
+        headers:{"Accept":"application/vnd.github+json", "Authorization":"Bearer " + token, "X-GitHub-Api-Version":"2022-11-28", "Content-Type":"application/json"},
+        body:JSON.stringify({ref:BRANCH, inputs:{action:"update", watches:payload}})
       }
     );
-
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`GitHub rejected the request (${response.status}): ${text}`);
     }
 
-    pendingPayload = JSON.stringify(watches);
     selectedDates = [];
     renderSelectedDates();
     hideForm();
-    showMessage("🎾 Update accepted by GitHub. Waiting for the alert list to sync…");
+    showMessage("🎾 Update accepted by GitHub. Publishing the saved alerts…");
 
-    for (let attempt = 0; attempt < 15 && pendingPayload; attempt++) {
+    for (let attempt = 0; attempt < 30 && pendingPayload; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       await loadWatches();
     }
-
     if (pendingPayload) {
-      showMessage("GitHub accepted the update, but syncing is taking longer than usual. Your changes will stay visible and the app will keep checking.", "error");
+      showMessage("GitHub accepted your change. Publishing is taking longer than usual; your alert remains visible. Refresh a little later.", "error");
     } else {
-      showMessage("🎾 Alerts saved and synced.");
+      showMessage("🎾 Alerts saved and published.");
     }
   } catch (error) {
+    pendingPayload = null;
     watches = previousWatches || watches;
     render();
     console.error("Court Watch save error:", error);
@@ -514,12 +495,11 @@ async function syncWatches(previousWatches) {
     render();
   }
 }
-
 loadWatches();
 
 function refreshIfSafe() {
   const formOpen = document.getElementById("form").classList.contains("show");
-  if (!syncing && !formOpen) loadWatches();
+  if (!syncing && !formOpen && !pendingPayload) loadWatches();
 }
 
 window.addEventListener("focus", refreshIfSafe);
