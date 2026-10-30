@@ -9,6 +9,10 @@
 <title>Court Watch</title>
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 
 <style>
 * { box-sizing: border-box; }
@@ -511,5 +515,17 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshIfSafe();
 });
 </script>
+
+// Keep the Home Screen app shell current instead of relying on Safari's cached copy.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+      await registration.update();
+    } catch (error) {
+      console.warn("Court Watch app update check failed:", error);
+    }
+  });
+}
 </body>
 </html>
