@@ -189,35 +189,25 @@ function showMessage(text, type = "success") {
 
 async function loadWatches() {
   try {
-    // Read through GitHub's API first: raw.githubusercontent.com can briefly
-    // serve an older cached alerts.json after a successful save/delete.
-    let latest;
-    let apiError;
-    try {
-      const apiResponse = await fetch(
-        "https://api.github.com/repos/" + OWNER + "/" + REPO +
-        "/contents/alerts.json?ref=" + BRANCH + "&_=" + Date.now(),
-        {
-          cache: "no-store",
-          headers: {
-            "Accept": "application/vnd.github+json",
-            "Cache-Control": "no-cache"
-          }
+    // Never fall back to raw.githubusercontent.com: Safari/CDN caches can
+    // return an older alerts.json and resurrect deleted watches after refresh.
+    const response = await fetch(
+      "https://api.github.com/repos/" + OWNER + "/" + REPO +
+      "/contents/alerts.json?ref=" + BRANCH + "&_=" + Date.now(),
+      {
+        cache: "no-store",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Cache-Control": "no-cache"
         }
-      );
-      if (!apiResponse.ok) throw new Error("GitHub API returned HTTP " + apiResponse.status);
-      const file = await apiResponse.json();
-      if (!file.content || file.encoding !== "base64") throw new Error("GitHub returned an unexpected alerts file format.");
-      const decoded = atob(file.content.replace(/\\s/g, ""));
-      const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
-      latest = JSON.parse(new TextDecoder().decode(bytes));
-    } catch (error) {
-      apiError = error;
-      const response = await fetch(ALERTS_URL + "?t=" + Date.now(), { cache: "no-store" });
-      if (!response.ok) throw new Error("GitHub API: " + (apiError.message || apiError) + "; raw file returned HTTP " + response.status);
-      latest = await response.json();
-    }
-
+      }
+    );
+    if (!response.ok) throw new Error("GitHub API returned HTTP " + response.status);
+    const file = await response.json();
+    if (!file.content || file.encoding !== "base64") throw new Error("GitHub returned an unexpected alerts file format.");
+    const decoded = atob(file.content.replace(/\\s/g, ""));
+    const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
+    const latest = JSON.parse(new TextDecoder().decode(bytes));
     if (!Array.isArray(latest)) throw new Error("The saved alert list is invalid.");
 
     const latestPayload = JSON.stringify(latest);
@@ -238,7 +228,7 @@ async function loadWatches() {
   } catch (error) {
     watchesLoaded = false;
     render();
-    showMessage("Couldn't load saved alerts: " + (error.message || "network error") + ". Check your connection and refresh before making changes.", "error");
+    showMessage("Couldn't verify saved alerts with GitHub: " + (error.message || "network error") + ". Your saved alerts have not been changed.", "error");
   }
 }
 
