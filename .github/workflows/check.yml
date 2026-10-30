@@ -92,7 +92,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # Keep the GitHub Pages app copy in sync with the canonical alert list.
-          cp alerts.json app/alerts.json\n          git add alerts.json app/alerts.json slot_state.json
+          cp alerts.json app/alerts.json
+          git add alerts.json app/alerts.json slot_state.json
 
           if git diff --cached --quiet; then
             echo "No changes."
