@@ -189,37 +189,43 @@ function showMessage(text, type = "success") {
 
 async function loadWatches() {
   try {
-    // Fall back to GitHub's Contents API if raw.githubusercontent.com is unavailable.
+    // Read through GitHub's API first: raw.githubusercontent.com can briefly
+    // serve an older cached alerts.json after a successful save/delete.
     let latest;
-    let loadError;
+    let apiError;
     try {
-      const response = await fetch(ALERTS_URL + "?t=" + Date.now(), { cache: "no-store" });
-      if (!response.ok) throw new Error("Raw alerts request returned HTTP " + response.status);
-      latest = await response.json();
-    } catch (error) {
-      loadError = error;
       const apiResponse = await fetch(
-        "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/alerts.json?ref=" + BRANCH,
-        { cache: "no-store", headers: { "Accept": "application/vnd.github+json" } }
+        "https://api.github.com/repos/" + OWNER + "/" + REPO +
+        "/contents/alerts.json?ref=" + BRANCH + "&_=" + Date.now(),
+        {
+          cache: "no-store",
+          headers: {
+            "Accept": "application/vnd.github+json",
+            "Cache-Control": "no-cache"
+          }
+        }
       );
-      if (!apiResponse.ok) throw new Error("Raw file: " + (loadError.message || loadError) + "; GitHub API: HTTP " + apiResponse.status);
+      if (!apiResponse.ok) throw new Error("GitHub API returned HTTP " + apiResponse.status);
       const file = await apiResponse.json();
       if (!file.content || file.encoding !== "base64") throw new Error("GitHub returned an unexpected alerts file format.");
       const decoded = atob(file.content.replace(/\\s/g, ""));
       const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
       latest = JSON.parse(new TextDecoder().decode(bytes));
+    } catch (error) {
+      apiError = error;
+      const response = await fetch(ALERTS_URL + "?t=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) throw new Error("GitHub API: " + (apiError.message || apiError) + "; raw file returned HTTP " + response.status);
+      latest = await response.json();
     }
 
     if (!Array.isArray(latest)) throw new Error("The saved alert list is invalid.");
 
     const latestPayload = JSON.stringify(latest);
-
     if (pendingPayload && latestPayload !== pendingPayload) {
       watchesLoaded = true;
       render();
       return;
     }
-
     if (pendingPayload && latestPayload === pendingPayload) pendingPayload = null;
 
     watches = latest.slice().sort((a, b) =>
