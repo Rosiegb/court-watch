@@ -1,0 +1,20 @@
+[
+  {
+    "id": "199a49b3-5d57-4d8f-9866-d53fe5830d9e",
+    "date": "2026-10-31",
+    "from": "09:00",
+    "until": "11:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  },
+  {
+    "id": "e9eb17f1-2fae-46f2-9f16-8713cf692a90",
+    "date": "2026-11-01",
+    "from": "17:00",
+    "until": "18:00",
+    "duration_minutes": 60,
+    "enabled": true,
+    "court": "any"
+  }
+]
