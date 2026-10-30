@@ -466,11 +466,11 @@ function showMessage(
 
 async function loadWatches() {
   try {
-    // Use the GitHub Pages copy on the same origin to avoid Safari CORS failures.
-    // A unique query string and reload cache mode prevent stale browser responses.
+    // Read the canonical alert file directly from GitHub, bypassing Pages deployment lag.
+    // The repository is public; cache-busting keeps Safari from showing an old list.
     const response = await fetch(
-      "/court-watch/alerts.json?refresh=" + Date.now(),
-      { cache: "reload" }
+      "https://raw.githubusercontent.com/" + OWNER + "/" + REPO + "/" + BRANCH + "/alerts.json?refresh=" + Date.now(),
+      { cache: "no-store" }
     );
     if (!response.ok) throw new Error("Court Watch alerts returned HTTP " + response.status);
     const latest = await response.json();
@@ -859,8 +859,8 @@ async function syncWatches(previousWatches) {
     showMessage("🎾 Update accepted by GitHub. Publishing the saved alerts…");
 
     // Do not replace the user's list with an older Pages deployment.
-    for (let attempt = 0; attempt < 30 && pendingPayload; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    for (let attempt = 0; attempt < 20 && pendingPayload; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await loadWatches();
     }
     if (pendingPayload) {
