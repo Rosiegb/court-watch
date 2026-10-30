@@ -143,5 +143,6 @@ jobs:
             echo "No state changes."
           else
             git commit -m "Update Court Watch state"
+            git pull --rebase origin main
             git push
           fi
