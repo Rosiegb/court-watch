@@ -140,7 +140,7 @@ No dates selected yet.
 
 <div class="form-actions">
 <button class="secondary" onclick="hideForm()">Cancel</button>
-<button onclick="addWatch()">Save</button>
+<button id="saveButton" onclick="saveWatch()">Save alert</button>
 </div>
 </div>
 
@@ -177,6 +177,8 @@ const ALERTS_URL =
 let watches = [];
 let watchesLoaded = false;
 let syncing = false;
+let saveQueue = [];
+let editingId = null;
 let selectedDates = [];
 let pendingPayload = null;
 
