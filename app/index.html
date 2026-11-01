@@ -399,19 +399,15 @@ function saveWatch() {
   hideForm(); render(); queueSave(previous);
 }
 function toggleWatch(index) {
-  if (!watchesLoaded || syncing) return;
-  const previousWatches = JSON.parse(JSON.stringify(watches));
-  watches[index].enabled = watches[index].enabled === false;
-  syncWatches(previousWatches);
+  if (!watchesLoaded || !watches[index]) return;
+  const previous = JSON.parse(JSON.stringify(watches));
+  watches[index].enabled = watches[index].enabled === false; render(); queueSave(previous);
 }
 
 function deleteWatch(index) {
-  if (!watchesLoaded || syncing) return;
-  if (!confirm("Delete this alert?")) return;
-
-  const previousWatches = JSON.parse(JSON.stringify(watches));
-  watches.splice(index, 1);
-  syncWatches(previousWatches);
+  if (!watchesLoaded || !watches[index] || !confirm("Delete this alert?")) return;
+  const previous = JSON.parse(JSON.stringify(watches)); watches.splice(index, 1); render();
+  showMessage("Alert removed from this screen. Saving deletion…"); queueSave(previous);
 }
 
 async function syncWatches(previousWatches) {
