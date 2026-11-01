@@ -267,7 +267,7 @@ function render() {
         </button>
       </div>
       <br>
-      <button class="delete" onclick="deleteWatch(${index})">Delete</button>
+      <div class="form-actions"><button class="secondary" onclick="editWatch(${index})">Edit</button><button class="delete" onclick="deleteWatch(${index})">Delete</button></div>
     `;
     container.appendChild(card);
   });
