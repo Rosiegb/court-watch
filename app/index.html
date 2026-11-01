@@ -375,67 +375,29 @@ function saveToken() {
   showMessage("GitHub connection saved.");
 }
 
-function addWatch() {
-  if (!watchesLoaded || syncing) {
-    showMessage("Please wait until saved alerts have loaded.", "error");
-    return;
-  }
-
+function saveWatch() {
+  if (!watchesLoaded) return;
   const dateInput = document.getElementById("date");
-
-  if (dateInput.value && !selectedDates.includes(dateInput.value)) {
-    selectedDates.push(dateInput.value);
-    selectedDates.sort();
-    dateInput.value = "";
-    renderSelectedDates();
-  }
-
-  const from = document.getElementById("from").value;
-  const until = document.getElementById("until").value;
+  if (!editingId && dateInput.value && !selectedDates.includes(dateInput.value)) { selectedDates.push(dateInput.value); selectedDates.sort(); dateInput.value = ""; renderSelectedDates(); }
+  const from = document.getElementById("from").value, until = document.getElementById("until").value;
   const duration = Number(document.getElementById("duration").value);
-
-  if (!selectedDates.length) {
-    showMessage("Add at least one date.", "error");
-    return;
+  if (!from || !until || from >= until) { showMessage("Until time must be after from time.", "error"); return; }
+  if (!selectedDates.length) { showMessage("Add at least one date.", "error"); return; }
+  const previous = JSON.parse(JSON.stringify(watches));
+  if (editingId) {
+    const watch = watches.find(item => item.id === editingId); if (!watch) return;
+    watch.date = selectedDates[0]; watch.from = from; watch.until = until; watch.duration_minutes = duration;
+  } else {
+    let added = 0;
+    selectedDates.forEach(date => {
+      const duplicate = watches.some(w => w.date === date && w.from === from && w.until === until && Number(w.duration_minutes) === duration);
+      if (!duplicate) { watches.push({id:crypto.randomUUID(),date,from,until,duration_minutes:duration,enabled:true,court:"any"}); added++; }
+    });
+    if (!added) { showMessage("Those alerts already exist.", "error"); return; }
   }
-
-  if (!from || !until || from >= until) {
-    showMessage("Until time must be after from time.", "error");
-    return;
-  }
-
-  const previousWatches = JSON.parse(JSON.stringify(watches));
-  const datesToAdd = [...selectedDates];
-
-  datesToAdd.forEach(date => {
-    const duplicate = watches.some(watch =>
-      watch.date === date &&
-      watch.from === from &&
-      watch.until === until &&
-      Number(watch.duration_minutes) === duration
-    );
-
-    if (!duplicate) {
-      watches.push({
-        id: crypto.randomUUID(),
-        date,
-        from,
-        until,
-        duration_minutes: duration,
-        enabled: true,
-        court: "any"
-      });
-    }
-  });
-
-  if (watches.length === previousWatches.length) {
-    showMessage("Those alerts already exist.", "error");
-    return;
-  }
-
-  syncWatches(previousWatches);
+  watches.sort((a,b) => String(a.date).localeCompare(String(b.date)) || String(a.from).localeCompare(String(b.from)));
+  hideForm(); render(); queueSave(previous);
 }
-
 function toggleWatch(index) {
   if (!watchesLoaded || syncing) return;
   const previousWatches = JSON.parse(JSON.stringify(watches));
