@@ -18,10 +18,10 @@
     "court": "any"
   },
   {
-    "id": "077da176-e746-4d6d-a88a-e2bd5822792b",
-    "date": "2026-11-13",
-    "from": "17:00",
-    "until": "18:00",
+    "id": "580bd492-ae67-4c9e-808e-f1479f4a170a",
+    "date": "2026-11-07",
+    "from": "09:00",
+    "until": "12:00",
     "duration_minutes": 60,
     "enabled": true,
     "court": "any"
