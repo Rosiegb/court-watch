@@ -274,12 +274,26 @@ function render() {
 }
 
 function showForm() {
-  if (!watchesLoaded || syncing) {
-    showMessage("Please wait until saved alerts have loaded.", "error");
-    return;
-  }
-  document.getElementById("form").classList.add("show");
-  renderSelectedDates();
+  if (!watchesLoaded) { showMessage("Saved alerts are still loading. Try again in a moment.", "error"); return; }
+  editingId = null; selectedDates = [];
+  document.getElementById("formTitle").textContent = "Add alert";
+  document.getElementById("saveButton").textContent = "Save alert";
+  document.getElementById("date").disabled = false;
+  document.getElementById("from").value = "08:00";
+  document.getElementById("until").value = "22:00";
+  document.getElementById("duration").value = "60";
+  document.getElementById("form").classList.add("show"); renderSelectedDates();
+}
+function editWatch(index) {
+  const watch = watches[index]; if (!watch) return;
+  editingId = watch.id; selectedDates = [watch.date];
+  document.getElementById("formTitle").textContent = "Edit alert";
+  document.getElementById("saveButton").textContent = "Save changes";
+  document.getElementById("date").value = ""; document.getElementById("date").disabled = true;
+  document.getElementById("from").value = watch.from;
+  document.getElementById("until").value = watch.until;
+  document.getElementById("duration").value = String(watch.duration_minutes);
+  document.getElementById("form").classList.add("show"); renderSelectedDates();
 }
 
 function addSelectedDate() {
@@ -340,6 +354,7 @@ function renderSelectedDates() {
 
 function hideForm() {
   document.getElementById("form").classList.remove("show");
+  document.getElementById("date").disabled = false; editingId = null; selectedDates = [];
 }
 
 function showToken() {
