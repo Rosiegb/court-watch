@@ -118,7 +118,7 @@ input, select {
 <label>Dates</label>
 <input id="date" type="date">
 
-<button type="button" class="secondary" onclick="addSelectedDate()" style="width:100%; margin:-6px 0 12px">
+<button id="addDateButton" type="button" class="secondary" onclick="addSelectedDate()" style="width:100%; margin:-6px 0 12px">
 ＋ Add this date
 </button>
 
@@ -290,7 +290,8 @@ function editWatch(index) {
   editingId = watch.id; selectedDates = [watch.date];
   document.getElementById("formTitle").textContent = "Edit alert";
   document.getElementById("saveButton").textContent = "Save changes";
-  document.getElementById("date").value = ""; document.getElementById("date").disabled = true;
+  document.getElementById("date").value = watch.date; document.getElementById("date").disabled = false;
+  document.getElementById("addDateButton").style.display = "none";
   document.getElementById("from").value = watch.from;
   document.getElementById("until").value = watch.until;
   document.getElementById("duration").value = String(watch.duration_minutes);
@@ -355,7 +356,7 @@ function renderSelectedDates() {
 
 function hideForm() {
   document.getElementById("form").classList.remove("show");
-  document.getElementById("date").disabled = false; editingId = null; selectedDates = [];
+  document.getElementById("date").disabled = false; document.getElementById("addDateButton").style.display = "block"; editingId = null; selectedDates = [];
 }
 
 function showToken() {
@@ -387,7 +388,8 @@ function saveWatch() {
   const previous = JSON.parse(JSON.stringify(watches));
   if (editingId) {
     const watch = watches.find(item => item.id === editingId); if (!watch) return;
-    watch.date = selectedDates[0]; watch.from = from; watch.until = until; watch.duration_minutes = duration;
+    if (!dateInput.value) { showMessage("Choose a date.", "error"); return; }
+    watch.date = dateInput.value; watch.from = from; watch.until = until; watch.duration_minutes = duration;
   } else {
     let added = 0;
     selectedDates.forEach(date => {
