@@ -194,6 +194,7 @@ function showMessage(text, type = "success") {
 }
 
 async function loadWatches() {
+  if (syncing) return;
   try {
     // Read the canonical alert file directly from GitHub, bypassing Pages deployment lag.
     // The repository is public; cache-busting keeps Safari from showing an old list.
@@ -431,8 +432,8 @@ async function processSaveQueue() {
       if (!response.ok) throw Error("GitHub rejected the update ("+response.status+").");
       showMessage("Change sent to GitHub. Saving in the background...");
       let confirmed = false;
-      for (let i=0; i<16; i++) {
-        await new Promise(resolve => setTimeout(resolve,750));
+      for (let i=0; i<8; i++) {
+        await new Promise(resolve => setTimeout(resolve,500));
         const check = await fetch(ALERTS_URL+"?refresh="+Date.now(), {cache:"no-store"});
         if (check.ok && JSON.stringify(await check.json()) === item.payload) { confirmed=true; pendingPayload=null; break; }
       }
