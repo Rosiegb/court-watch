@@ -461,6 +461,7 @@ document.addEventListener("visibilitychange", () => {
 });
 </script>
 
+<script>
 // Keep the Home Screen app shell current instead of relying on Safari's cached copy.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
@@ -472,5 +473,6 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
+</script>
 </body>
 </html>
