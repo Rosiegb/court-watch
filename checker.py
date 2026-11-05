@@ -4,6 +4,7 @@ import re
 import requests
 from collections import defaultdict
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 
@@ -25,6 +26,31 @@ def load_watches():
     if not isinstance(watches, list):
         raise ValueError("alerts.json must contain a list of alerts")
     return watches
+
+
+def remove_expired_watches(watches):
+    # Use the venue's local date so alerts expire at midnight in London.
+    today = datetime.now(ZoneInfo("Europe/London")).date()
+    active = []
+    expired_ids = set()
+    for watch in watches:
+        try:
+            watch_date = datetime.strptime(watch["date"], "%Y-%m-%d").date()
+        except (KeyError, TypeError, ValueError):
+            # Keep malformed entries visible rather than silently deleting them.
+            active.append(watch)
+            continue
+        if watch_date < today:
+            expired_ids.add(str(watch.get("id") or f"{watch.get('date')}_{watch.get('from')}_{watch.get('until')}_{watch.get('duration_minutes')}"))
+        else:
+            active.append(watch)
+
+    if expired_ids:
+        with open("alerts.json", "w", encoding="utf-8") as f:
+            json.dump(active, f, indent=2)
+            f.write("\\n")
+        print(f"Automatically removed {len(expired_ids)} expired alert(s): {sorted(expired_ids)}")
+    return active, expired_ids
 
 
 def load_state():
@@ -196,7 +222,10 @@ def send_notification(date_value, available):
 
 def main():
     watches = load_watches()
+    watches, expired_ids = remove_expired_watches(watches)
     state = load_state()
+    for expired_id in expired_ids:
+        state.pop(expired_id, None)
     active_ids = {
         str(watch.get("id") or f"{watch.get('date')}_{watch.get('from')}_{watch.get('until')}_{watch.get('duration_minutes')}")
         for watch in watches
