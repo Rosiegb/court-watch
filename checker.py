@@ -48,7 +48,7 @@ def remove_expired_watches(watches):
     if expired_ids:
         with open("alerts.json", "w", encoding="utf-8") as f:
             json.dump(active, f, indent=2)
-            f.write("\\n")
+            f.write("\n")
         print(f"Automatically removed {len(expired_ids)} expired alert(s): {sorted(expired_ids)}")
     return active, expired_ids
 
