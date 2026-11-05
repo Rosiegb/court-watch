@@ -34,14 +34,5 @@
     "duration_minutes": 60,
     "enabled": true,
     "court": "any"
-  },
-  {
-    "id": "21ccf80e-ba56-4c55-b8e0-cb37b80c9a12",
-    "date": "2026-11-06",
-    "from": "17:00",
-    "until": "18:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
   }
 ]
