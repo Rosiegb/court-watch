@@ -140,12 +140,12 @@ jobs:
           git config user.name "Court Watch"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add slot_state.json
+          git add alerts.json slot_state.json
 
           if git diff --cached --quiet; then
             echo "No state changes."
           else
-            git commit -m "Update Court Watch state"
+            git commit -m "Update Court Watch state and expired alerts"
             git pull --rebase origin main
             git push
           fi
