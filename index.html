@@ -923,18 +923,19 @@ async function syncWatches(previousWatches) {
     hideForm();
     showMessage("🎾 Update accepted by GitHub. Publishing the saved alerts…");
 
-    // Do not replace the user's list with an older Pages deployment.
-    for (let attempt = 0; attempt < 20 && pendingPayload; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Keep the new alert visible immediately. Confirm against GitHub in the
+    // background, but never replace the optimistic list with an older response.
+    showMessage("🎾 Alert submitted — confirming the saved list…");
+    for (let attempt = 0; attempt < 8 && pendingPayload; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
       await loadWatches();
     }
     if (pendingPayload) {
-      // Do not leave the app permanently stuck showing an unconfirmed optimistic list.
-      pendingPayload = null;
-      await loadWatches();
-      showMessage("GitHub accepted the update, but it has not appeared in the saved list yet. The app has reloaded the confirmed version; try again in a moment.", "error");
+      // The workflow may still be committing. Keep the alert on screen and let
+      // the next foreground refresh confirm it; do not roll back to stale data.
+      showMessage("GitHub accepted the alert. It is still syncing, and will remain visible while the saved list catches up.", "error");
     } else {
-      showMessage("🎾 Alerts saved and published.");
+      showMessage("🎾 Alerts saved.");
     }
   } catch (error) {
     pendingPayload = null;
