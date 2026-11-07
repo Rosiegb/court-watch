@@ -29,18 +29,24 @@ def load_watches():
 
 
 def remove_expired_watches(watches):
-    # Use the venue's local date so alerts expire at midnight in London.
-    today = datetime.now(ZoneInfo("Europe/London")).date()
+    # Expire in London time once the date has passed or today's alert window has ended.
+    now = datetime.now(ZoneInfo("Europe/London"))
+    today = now.date()
+    current_minutes = now.hour * 60 + now.minute
     active = []
     expired_ids = set()
     for watch in watches:
         try:
             watch_date = datetime.strptime(watch["date"], "%Y-%m-%d").date()
+            until_minutes = time_to_minutes(watch["until"])
         except (KeyError, TypeError, ValueError):
             # Keep malformed entries visible rather than silently deleting them.
             active.append(watch)
             continue
-        if watch_date < today:
+        expired = watch_date < today or (
+            watch_date == today and current_minutes >= until_minutes
+        )
+        if expired:
             expired_ids.add(str(watch.get("id") or f"{watch.get('date')}_{watch.get('from')}_{watch.get('until')}_{watch.get('duration_minutes')}"))
         else:
             active.append(watch)
