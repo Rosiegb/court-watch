@@ -268,7 +268,7 @@ select {
   class="card form"
 >
 
-<h2>Add alert</h2>
+<h2 id="formTitle">Add alert</h2>
 
 <label>Dates</label>
 
@@ -335,9 +335,10 @@ Cancel
 </button>
 
 <button
-  onclick="addWatch()"
+  id="saveButton"
+  onclick="saveWatch()"
 >
-Save
+Save alert
 </button>
 
 </div>
@@ -426,6 +427,7 @@ let watches = [];
 let watchesLoaded = false;
 let syncing = false;
 let selectedDates = [];
+let editingId = null;
 let pendingPayload = null;
 
 
@@ -609,12 +611,10 @@ function render() {
 
         <br>
 
-        <button
-          class="delete"
-          onclick="deleteWatch(${index})"
-        >
-          Delete
-        </button>
+        <div class="form-actions">
+          <button class="secondary" onclick="editWatch(${index})">Edit</button>
+          <button class="delete" onclick="deleteWatch(${index})">Delete</button>
+        </div>
 
       `;
 
@@ -633,6 +633,32 @@ function showForm() {
     showMessage("Please wait until saved alerts have loaded.", "error");
     return;
   }
+  editingId = null;
+  selectedDates = [];
+  document.getElementById("formTitle").textContent = "Add alert";
+  document.getElementById("saveButton").textContent = "Save alert";
+  document.getElementById("date").disabled = false;
+  document.getElementById("date").value = "";
+  document.getElementById("from").value = "08:00";
+  document.getElementById("until").value = "22:00";
+  document.getElementById("duration").value = "60";
+  document.getElementById("form").classList.add("show");
+  renderSelectedDates();
+}
+
+function editWatch(index) {
+  if (!watchesLoaded || syncing) return;
+  const watch = watches[index];
+  if (!watch) return;
+  editingId = watch.id;
+  selectedDates = [watch.date];
+  document.getElementById("formTitle").textContent = "Edit alert";
+  document.getElementById("saveButton").textContent = "Save changes";
+  document.getElementById("date").disabled = false;
+  document.getElementById("date").value = watch.date;
+  document.getElementById("from").value = watch.from;
+  document.getElementById("until").value = watch.until;
+  document.getElementById("duration").value = String(watch.duration_minutes);
   document.getElementById("form").classList.add("show");
   renderSelectedDates();
 }
@@ -684,11 +710,11 @@ function renderSelectedDates() {
 
 
 function hideForm() {
-
-  document
-    .getElementById("form")
-    .classList.remove("show");
-
+  document.getElementById("form").classList.remove("show");
+  document.getElementById("date").disabled = false;
+  editingId = null;
+  selectedDates = [];
+  renderSelectedDates();
 }
 
 
@@ -780,6 +806,36 @@ function addWatch() {
     return;
   }
   syncWatches(previousWatches);
+}
+
+function saveWatch() {
+  if (!watchesLoaded || syncing) return;
+  const dateInput = document.getElementById("date");
+  const from = document.getElementById("from").value;
+  const until = document.getElementById("until").value;
+  const duration = Number(document.getElementById("duration").value);
+  if (!from || !until || from >= until) {
+    showMessage("Until time must be after from time.", "error");
+    return;
+  }
+  if (editingId) {
+    if (!dateInput.value) {
+      showMessage("Choose a date.", "error");
+      return;
+    }
+    const previousWatches = JSON.parse(JSON.stringify(watches));
+    const watch = watches.find(item => item.id === editingId);
+    if (!watch) return;
+    watch.date = dateInput.value;
+    watch.from = from;
+    watch.until = until;
+    watch.duration_minutes = duration;
+    selectedDates = [];
+    hideForm();
+    syncWatches(previousWatches);
+    return;
+  }
+  addWatch();
 }
 
 function toggleWatch(index) {
