@@ -468,14 +468,23 @@ function showMessage(
 
 async function loadWatches() {
   try {
-    // Read the canonical alert file directly from GitHub, bypassing Pages deployment lag.
-    // The repository is public; cache-busting keeps Safari from showing an old list.
+    // Read the canonical GitHub Contents API response, not the raw-file CDN,
+    // which can briefly serve a stale copy after a successful workflow commit.
     const response = await fetch(
-      "https://raw.githubusercontent.com/" + OWNER + "/" + REPO + "/" + BRANCH + "/alerts.json?refresh=" + Date.now(),
-      { cache: "no-store" }
+      "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/alerts.json?ref=" + BRANCH + "&refresh=" + Date.now(),
+      {
+        cache: "no-store",
+        headers: { "Accept": "application/vnd.github+json" }
+      }
     );
     if (!response.ok) throw new Error("Court Watch alerts returned HTTP " + response.status);
-    const latest = await response.json();
+    const file = await response.json();
+    if (!file || typeof file.content !== "string" || file.encoding !== "base64") {
+      throw new Error("GitHub returned an unreadable saved alert file.");
+    }
+    const binary = atob(file.content.replace(/\\s/g, ""));
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    const latest = JSON.parse(new TextDecoder().decode(bytes));
     if (!Array.isArray(latest)) throw new Error("The saved alert list is invalid.");
 
     const latestPayload = JSON.stringify(latest);
