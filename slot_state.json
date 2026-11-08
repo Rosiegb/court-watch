@@ -3,7 +3,11 @@
     "10:00|11:00|Highbury Fields Court 1",
     "11:00|12:00|Highbury Fields Court 1"
   ],
-  "4aef8384-30e0-4f6a-9580-a7f4a5662ddd": [],
-  "6eb1d6af-5887-4c96-a8af-b652cebee956": [],
+  "4aef8384-30e0-4f6a-9580-a7f4a5662ddd": [
+    "10:00|11:00|Highbury Fields Court 1"
+  ],
+  "6eb1d6af-5887-4c96-a8af-b652cebee956": [
+    "10:00|11:00|Highbury Fields Court 1"
+  ],
   "27f5f617-c320-4798-b00d-da64bd962b5d": []
 }
