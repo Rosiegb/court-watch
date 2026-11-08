@@ -14,7 +14,7 @@
     "from": "15:00",
     "until": "17:00",
     "duration_minutes": 60,
-    "enabled": true,
+    "enabled": false,
     "court": "any"
   },
   {
