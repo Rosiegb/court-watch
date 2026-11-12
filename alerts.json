@@ -18,15 +18,6 @@
     "court": "any"
   },
   {
-    "id": "6eb1d6af-5887-4c96-a8af-b652cebee956",
-    "date": "2026-11-15",
-    "from": "09:00",
-    "until": "11:00",
-    "duration_minutes": 60,
-    "enabled": true,
-    "court": "any"
-  },
-  {
     "id": "26112601-810d-492b-a618-87e9809b5add",
     "date": "2026-11-16",
     "from": "09:00",
