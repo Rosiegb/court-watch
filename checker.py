@@ -122,6 +122,20 @@ def find_courts(page):
             pass
 
     if not courts:
+        # Better sometimes renders the court picker as a native select rather
+        # than role=option elements. Read those options before falling back to
+        # visible page text.
+        try:
+            options = page.locator("select option")
+            for i in range(options.count()):
+                text = options.nth(i).inner_text().strip()
+                match = re.search(r"Highbury Fields Court\\s+(\\d+)", text, re.I)
+                if match:
+                    courts.append(f"Highbury Fields Court {match.group(1)}")
+        except Exception:
+            pass
+
+    if not courts:
         try:
             body = page.locator("body").inner_text()
         except Exception:
@@ -141,7 +155,8 @@ def check_slot(page, slot):
     print(f"Checking slot: {url}")
     try:
         response = page.goto(url, wait_until="networkidle", timeout=60000)
-        page.wait_for_timeout(1200)
+        # Allow Better's client-side court selector time to populate.
+        page.wait_for_timeout(3500)
         if response is None or response.status >= 400:
             print(f"Slot page returned an invalid response: {getattr(response, 'status', None)}")
             return None
@@ -154,15 +169,20 @@ def check_slot(page, slot):
         # when the page looks like a loaded Better booking page. Otherwise treat
         # it as an unknown scrape result and preserve prior state for that slot.
         body_lower = body.lower()
-        known_page = (
-            "highbury" in body_lower
-            or "court" in body_lower
-            or "no availability" in body_lower
-            or "no courts" in body_lower
-        )
+        known_page = any(phrase in body_lower for phrase in (
+            "no availability",
+            "no courts available",
+            "no courts are available",
+            "no courts found",
+            "fully booked",
+        ))
         if known_page:
             return []
-        print("Could not verify the slot page; preserving prior state for this slot.")
+        try:
+            title = page.title()
+        except Exception:
+            title = "(title unavailable)"
+        print(f"Could not verify the slot page (title: {title}); no court names or explicit no-availability message found. Preserving prior state for this slot.")
         return None
     except Exception as exc:
         print(f"Slot check failed: {exc}")
